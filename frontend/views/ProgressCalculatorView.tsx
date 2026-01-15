@@ -1,0 +1,250 @@
+
+import React, { useState, useMemo } from 'react';
+import { PILLARS, QUARTERS } from '../data';
+import { MonitoringEntry } from '../types';
+import { calculateQuarterProgress, calculateMonthlyProgress, parseValue } from '../utils/progressUtils';
+
+interface ProgressCalculatorViewProps {
+    entries: MonitoringEntry[];
+}
+
+const ProgressCalculatorView: React.FC<ProgressCalculatorViewProps> = ({ entries }) => {
+    const [pillarId, setPillarId] = useState('');
+    const [indicatorId, setIndicatorId] = useState('');
+    const [timelineId, setTimelineId] = useState('q1'); // 'q1', 'q2', 'q3', 'q4', 'annual'
+
+    const selectedPillar = useMemo(() => PILLARS.find(p => p.name === pillarId), [pillarId]);
+    const indicators = useMemo(() => selectedPillar?.indicators || [], [selectedPillar]);
+    const selectedIndicator = useMemo(() => indicators.find(i => i.id === indicatorId), [indicators, indicatorId]);
+
+    const isAnnual = timelineId === 'annual';
+    const activeMonths = useMemo(() => {
+        if (isAnnual) return QUARTERS.flatMap(q => q.months);
+        return QUARTERS.find(q => q.id === timelineId)?.months || [];
+    }, [timelineId, isAnnual]);
+
+    const indicatorEntries = useMemo(() =>
+        entries.filter(e => e.indicatorId === indicatorId),
+        [entries, indicatorId]
+    );
+
+    const calcResult = useMemo(() => {
+        if (!selectedIndicator) return null;
+
+        if (isAnnual) {
+            const totalActual = indicatorEntries.reduce((acc, curr) => acc + curr.value, 0);
+            const annualTarget = parseValue(selectedIndicator.targets.annual);
+            const performance = annualTarget > 0 ? (totalActual / annualTarget) * 100 : 0;
+            return { totalActual, target: annualTarget, performance };
+        }
+
+        return calculateQuarterProgress({
+            indicator: selectedIndicator,
+            entries: indicatorEntries,
+            quarterId: timelineId,
+            monthsInQuarter: activeMonths
+        });
+    }, [selectedIndicator, indicatorEntries, timelineId, activeMonths, isAnnual]);
+
+    const formulaExplanation = useMemo(() => {
+        if (!selectedIndicator) return null;
+        if (isAnnual) {
+            return {
+                title: 'Annual Performance Formula',
+                math: '(Total Year achievement / Annual Fixed Target) * 100',
+                desc: 'Calculated using the total sum of all reported months against the overall annual goal.'
+            };
+        }
+        if (selectedIndicator.measurementType === 'percentage') {
+            return {
+                title: 'Percentage Indicator Formula',
+                math: '(Actual Value % / Fixed Quarter Target %) * 100',
+                desc: 'Progress is calculated against the specific target for this quarter. We do NOT sum targets from previous quarters.'
+            };
+        }
+        if (selectedIndicator.measurementType === 'decreasing') {
+            return {
+                title: 'Decreasing Rate Formula',
+                math: '(Fixed Target / Actual Value) * 100',
+                desc: 'Lower values are better. Progress increases as actual values stay below target.'
+            };
+        }
+        return {
+            title: 'Standard Cumulative Formula',
+            math: '(Sum of Monthly Inputs / Sum of Fixed Targets) * 100',
+            desc: 'Inputs and targets are summed cumulatively from Q1 up to the current quarter.'
+        };
+    }, [selectedIndicator, isAnnual]);
+
+    const inputClasses = "w-full p-3 rounded-xl border-2 border-slate-200 bg-white text-slate-900 text-sm font-semibold focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none appearance-none cursor-pointer";
+
+    return (
+        <div className="space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Progress Calculator</h1>
+                    <p className="text-slate-500 font-medium text-sm">Analyze how progress percentages are derived from your data.</p>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Selection Card */}
+                <div className="lg:col-span-1 space-y-6">
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 space-y-4">
+                        <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Select Context</h3>
+
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Pillar</label>
+                            <select
+                                value={pillarId}
+                                onChange={(e) => { setPillarId(e.target.value); setIndicatorId(''); }}
+                                className={inputClasses}
+                            >
+                                <option value="">-- Select Pillar --</option>
+                                {PILLARS.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
+                            </select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Indicator</label>
+                            <select
+                                value={indicatorId}
+                                onChange={(e) => setIndicatorId(e.target.value)}
+                                disabled={!pillarId}
+                                className={inputClasses}
+                            >
+                                <option value="">-- Select Indicator --</option>
+                                {indicators.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+                            </select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Timeline</label>
+                            <select
+                                value={timelineId}
+                                onChange={(e) => setTimelineId(e.target.value)}
+                                className={inputClasses}
+                            >
+                                {QUARTERS.map(q => <option key={q.id} value={q.id}>{q.name}</option>)}
+                                <option value="annual" className="font-bold text-blue-600">Full Year (Annual)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {formulaExplanation && (
+                        <div className="bg-blue-600 p-6 rounded-3xl shadow-xl shadow-blue-500/20 text-white space-y-3">
+                            <h3 className="font-bold text-blue-100 text-xs uppercase tracking-widest">{formulaExplanation.title}</h3>
+                            <div className="bg-blue-700/50 p-3 rounded-xl font-mono text-sm border border-blue-400/30">
+                                {formulaExplanation.math}
+                            </div>
+                            <p className="text-xs text-blue-100 leading-relaxed font-medium">
+                                {formulaExplanation.desc}
+                            </p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Calculation Table */}
+                <div className="lg:col-span-2">
+                    {!selectedIndicator ? (
+                        <div className="bg-slate-100 rounded-3xl h-full flex flex-col items-center justify-center p-12 text-center border-2 border-dashed border-slate-300">
+                            <div className="w-16 h-16 bg-slate-200 rounded-2xl flex items-center justify-center mb-4">
+                                <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                            </div>
+                            <h3 className="font-bold text-slate-900">No Indicator Selected</h3>
+                            <p className="text-slate-500 text-sm max-w-xs mx-auto">Please pick a pillar and indicator to view the step-by-step progress calculation.</p>
+                        </div>
+                    ) : (
+                        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                            <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                                <h3 className="font-black text-slate-900 text-sm tracking-tight">{selectedIndicator.name}</h3>
+                                <div className="flex items-center space-x-2 mt-1">
+                                    <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-100 text-blue-600 rounded uppercase tracking-tighter">
+                                        Type: {selectedIndicator.measurementType || 'Cumulative'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="p-6 overflow-x-auto">
+                                <table className="w-full text-left">
+                                    <thead>
+                                        <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                                            <th className="pb-3 px-2">Timeline</th>
+                                            <th className="pb-3 px-2">Achievement</th>
+                                            <th className="pb-3 px-2">{isAnnual ? 'Annual Target' : 'Quarter Target'}</th>
+                                            <th className="pb-3 px-2">Progress</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="text-sm font-semibold text-slate-700">
+                                        {activeMonths.map(month => {
+                                            const entry = indicatorEntries.find(e => e.month === month);
+                                            const value = entry?.value || 0;
+
+                                            let displayTarget = '0';
+                                            let rowProgress = 0;
+
+                                            if (isAnnual) {
+                                                displayTarget = String(selectedIndicator.targets.annual);
+                                                const tVal = parseValue(displayTarget);
+                                                rowProgress = tVal > 0 ? (value / tVal) * 100 : 0;
+                                            } else {
+                                                displayTarget = String(
+                                                    timelineId === 'q1' ? selectedIndicator.targets.q1 :
+                                                        timelineId === 'q2' ? selectedIndicator.targets.q2 :
+                                                            timelineId === 'q3' ? selectedIndicator.targets.q3 :
+                                                                selectedIndicator.targets.q4
+                                                );
+                                                rowProgress = calculateMonthlyProgress(selectedIndicator, value, timelineId);
+                                            }
+
+                                            return (
+                                                <tr key={month} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                                                    <td className="py-4 px-2 text-slate-900">{month}</td>
+                                                    <td className="py-2 px-2">
+                                                        <span className="font-mono">{value.toLocaleString()}</span>
+                                                    </td>
+                                                    <td className="py-2 px-2 text-slate-400 font-medium">
+                                                        {displayTarget}
+                                                    </td>
+                                                    <td className="py-2 px-2">
+                                                        <span className={`inline-block px-2 py-0.5 rounded-lg ${rowProgress >= 100 ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                            {rowProgress.toFixed(1)}%
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div className="p-8 bg-slate-900 text-white flex flex-col md:flex-row items-center justify-between gap-6">
+                                <div className="space-y-1 text-center md:text-left">
+                                    <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">
+                                        {isAnnual ? 'Year Total' : 'Quarter Total'}
+                                    </p>
+                                    <div className="flex items-baseline space-x-2 justify-center md:justify-start">
+                                        <span className="text-3xl font-black">{calcResult?.totalActual.toLocaleString()}</span>
+                                        <span className="text-slate-500 font-bold">/ {calcResult?.target.toLocaleString()}</span>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center space-x-6">
+                                    <div className="h-16 w-[1px] bg-slate-800 hidden md:block"></div>
+                                    <div className="text-center md:text-right">
+                                        <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">
+                                            {isAnnual ? 'Overall Annual Progress' : 'Final Quarter Progress'}
+                                        </p>
+                                        <div className="text-4xl font-black text-blue-500">{calcResult?.performance.toFixed(1)}%</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default ProgressCalculatorView;

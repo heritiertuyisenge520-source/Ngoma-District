@@ -10,8 +10,8 @@ export interface IndicatorTargets {
 export interface Indicator {
   id: string;
   name: string;
-  inputLabel?: string; 
-  isDual?: boolean; 
+  inputLabel?: string;
+  isDual?: boolean;
   targetLabel?: string;
   achievementLabel?: string;
   targets?: IndicatorTargets;
@@ -36,13 +36,18 @@ export interface Quarter {
 }
 
 export interface MonitoringEntry {
+  _id?: string;
   pillarId: string;
+  pillarName?: string;
   outputId: string;
   indicatorId: string;
+  indicatorName?: string;
   quarterId: string;
   month: string;
   value: number; // Achievement
   targetValue?: number; // Target (optional)
+  subValues?: Record<string, number>;
   comments: string;
+  submittedBy?: string;
   timestamp: string;
 }
