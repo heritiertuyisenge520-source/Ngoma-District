@@ -15,6 +15,8 @@ export interface Indicator {
   targetLabel?: string;
   achievementLabel?: string;
   targets?: IndicatorTargets;
+  subIndicatorIds?: Record<string, string>;
+  measurementType?: 'cumulative' | 'percentage' | 'decreasing';
 }
 
 export interface Output {

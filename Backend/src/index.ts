@@ -105,10 +105,105 @@ app.delete('/api/entries/:id', async (req, res) => {
 // 6. Submit Data (Submission Collection)
 app.get('/api/submissions', async (req, res) => {
     try {
-        const submissions = await SubmissionModel.find({}).sort({ timestamp: -1 });
+        const { pillarId, quarterId, indicatorId, month } = req.query;
+        const query: any = {};
+
+        if (pillarId) query.pillarId = pillarId;
+        if (quarterId) query.quarterId = quarterId;
+        if (indicatorId) query.indicatorId = indicatorId;
+        if (month) query.month = month;
+
+        const submissions = await SubmissionModel.find(query).sort({ timestamp: -1 });
         res.json(submissions);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching submissions' });
+    }
+});
+
+// 6b. Get Submissions grouped by Quarter
+app.get('/api/submissions/by-quarter', async (req, res) => {
+    try {
+        const { pillarId, indicatorId } = req.query;
+        const matchStage: any = {};
+
+        if (pillarId) matchStage.pillarId = pillarId;
+        if (indicatorId) matchStage.indicatorId = indicatorId;
+
+        const submissions = await SubmissionModel.aggregate([
+            { $match: matchStage },
+            {
+                $group: {
+                    _id: {
+                        quarterId: '$quarterId',
+                        indicatorId: '$indicatorId',
+                        pillarId: '$pillarId'
+                    },
+                    indicatorName: { $first: '$indicatorName' },
+                    pillarName: { $first: '$pillarName' },
+                    totalValue: { $sum: '$value' },
+                    submissions: {
+                        $push: {
+                            _id: '$_id',
+                            month: '$month',
+                            value: '$value',
+                            subValues: '$subValues',
+                            comments: '$comments',
+                            submittedBy: '$submittedBy',
+                            timestamp: '$timestamp'
+                        }
+                    },
+                    count: { $sum: 1 }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    quarterId: '$_id.quarterId',
+                    indicatorId: '$_id.indicatorId',
+                    pillarId: '$_id.pillarId',
+                    indicatorName: 1,
+                    pillarName: 1,
+                    totalValue: 1,
+                    submissions: 1,
+                    count: 1
+                }
+            },
+            { $sort: { quarterId: 1, indicatorId: 1 } }
+        ]);
+
+        // Group by quarter for easier frontend consumption
+        const groupedByQuarter = submissions.reduce((acc: any, item: any) => {
+            const qId = item.quarterId;
+            if (!acc[qId]) {
+                acc[qId] = {
+                    quarterId: qId,
+                    quarterName: qId === 'q1' ? 'Quarter 1' : qId === 'q2' ? 'Quarter 2' : qId === 'q3' ? 'Quarter 3' : 'Quarter 4',
+                    indicators: []
+                };
+            }
+            acc[qId].indicators.push({
+                indicatorId: item.indicatorId,
+                indicatorName: item.indicatorName,
+                pillarId: item.pillarId,
+                pillarName: item.pillarName,
+                totalValue: item.totalValue,
+                submissions: item.submissions,
+                count: item.count
+            });
+            return acc;
+        }, {});
+
+        res.json({
+            quarters: Object.values(groupedByQuarter),
+            summary: {
+                totalSubmissions: submissions.reduce((a: number, b: any) => a + b.count, 0),
+                totalIndicators: submissions.length,
+                quartersWithData: Object.keys(groupedByQuarter).length
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching submissions by quarter:', error);
+        res.status(500).json({ message: 'Error fetching submissions by quarter' });
     }
 });
 
@@ -212,6 +307,61 @@ app.post('/api/clear-data', async (req, res) => {
     } catch (error) {
         logger.error('Error clearing data', error);
         res.status(500).json({ message: 'Error clearing data' });
+    }
+});
+
+// 8. Migration: Fix mismatched subValues keys in database
+app.post('/api/migrate-subvalues', async (req, res) => {
+    try {
+        // Key mappings: old key -> new key
+        const keyMappings: Record<string, string> = {
+            'poultry': 'chicken',      // Indicator 31
+            'maize_kg': 'maize',       // Indicator 8
+            'soya_kg': 'soya',         // Indicator 8
+            'bq': 'lsd',               // Indicator 24
+            'dap': 'urea',             // Indicator 10
+            'cows': '',                // Remove cows (not in subIndicatorIds)
+        };
+
+        const submissions = await SubmissionModel.find({ subValues: { $exists: true, $ne: null } });
+        let updatedCount = 0;
+
+        for (const submission of submissions) {
+            const subValues = submission.subValues as Record<string, number> | undefined;
+            if (!subValues) continue;
+
+            let modified = false;
+            const newSubValues: Record<string, number> = {};
+
+            for (const [key, value] of Object.entries(subValues)) {
+                if (keyMappings[key] !== undefined) {
+                    if (keyMappings[key] !== '') {
+                        // Rename key
+                        newSubValues[keyMappings[key]] = value;
+                    }
+                    // If mapped to '', we skip it (remove the key)
+                    modified = true;
+                } else {
+                    // Keep original key
+                    newSubValues[key] = value;
+                }
+            }
+
+            if (modified) {
+                await SubmissionModel.findByIdAndUpdate(submission._id, { subValues: newSubValues });
+                updatedCount++;
+            }
+        }
+
+        logger.info(`Migration completed: Updated ${updatedCount} submissions`);
+        res.json({
+            message: `Migration completed successfully`,
+            updatedSubmissions: updatedCount,
+            totalChecked: submissions.length
+        });
+    } catch (error) {
+        console.error('Migration error:', error);
+        res.status(500).json({ message: 'Error during migration' });
     }
 });
 

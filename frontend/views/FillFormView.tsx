@@ -390,23 +390,23 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                     {indicatorId === '8' && (
                       <div className="grid grid-cols-2 gap-3 md:gap-4">
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">Maize (Kg)</label>
+                          <label className="block text-[10px] font-bold text-blue-700 uppercase">Maize Seeds (Kg)</label>
                           <input
                             type="number"
-                            value={subValues['maize_kg'] ?? ''}
-                            onChange={(e) => handleSubValueChange('maize_kg', e.target.value)}
-                            placeholder="Maize"
+                            value={subValues['maize'] ?? ''}
+                            onChange={(e) => handleSubValueChange('maize', e.target.value)}
+                            placeholder="Maize seeds"
                             className={`${inputClasses} placeholder:text-slate-300 placeholder:font-normal`}
                             required
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">Soya (Kg)</label>
+                          <label className="block text-[10px] font-bold text-blue-700 uppercase">Soya Seeds (Kg)</label>
                           <input
                             type="number"
-                            value={subValues['soya_kg'] ?? ''}
-                            onChange={(e) => handleSubValueChange('soya_kg', e.target.value)}
-                            placeholder="Soya"
+                            value={subValues['soya'] ?? ''}
+                            onChange={(e) => handleSubValueChange('soya', e.target.value)}
+                            placeholder="Soya seeds"
                             className={`${inputClasses} placeholder:text-slate-300 placeholder:font-normal`}
                           />
                         </div>
@@ -414,18 +414,7 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                     )}
 
                     {indicatorId === '10' && (
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
-                        <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">DAP (Kg)</label>
-                          <input
-                            type="number"
-                            value={subValues['dap'] ?? ''}
-                            onChange={(e) => handleSubValueChange('dap', e.target.value)}
-                            placeholder="DAP"
-                            className={`${inputClasses} placeholder:text-slate-300 placeholder:font-normal`}
-                            required
-                          />
-                        </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                         <div className="space-y-1.5">
                           <label className="block text-[10px] font-bold text-blue-700 uppercase">UREA (Kg)</label>
                           <input
@@ -434,6 +423,7 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                             onChange={(e) => handleSubValueChange('urea', e.target.value)}
                             placeholder="UREA"
                             className={`${inputClasses} placeholder:text-slate-300 placeholder:font-normal`}
+                            required
                           />
                         </div>
                         <div className="space-y-1.5">
@@ -536,18 +526,7 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                     )}
 
                     {indicatorId === '24' && (
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
-                        <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">BlackQuater(BQ)</label>
-                          <input
-                            type="number"
-                            value={subValues['bq'] ?? ''}
-                            onChange={(e) => handleSubValueChange('bq', e.target.value)}
-                            placeholder="BQ"
-                            className={`${inputClasses} placeholder:text-slate-300 placeholder:font-normal`}
-                            required
-                          />
-                        </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                         <div className="space-y-1.5">
                           <label className="block text-[10px] font-bold text-blue-700 uppercase">LSD</label>
                           <input
@@ -556,6 +535,7 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                             onChange={(e) => handleSubValueChange('lsd', e.target.value)}
                             placeholder="LSD"
                             className={`${inputClasses} placeholder:text-slate-300 placeholder:font-normal`}
+                            required
                           />
                         </div>
                         <div className="space-y-1.5">
@@ -618,35 +598,25 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                     )}
 
                     {indicatorId === '31' && (
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+                      <div className="grid grid-cols-2 gap-3 md:gap-4">
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">Cows</label>
+                          <label className="block text-[10px] font-bold text-blue-700 uppercase">Pigs Insured</label>
                           <input
                             type="number"
-                            value={subValues['cows'] ?? ''}
-                            onChange={(e) => handleSubValueChange('cows', e.target.value)}
-                            placeholder="Cows"
+                            value={subValues['pig'] ?? ''}
+                            onChange={(e) => handleSubValueChange('pig', e.target.value)}
+                            placeholder="Number of pigs"
                             className={`${inputClasses} placeholder:text-slate-300 placeholder:font-normal`}
                             required
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">Pig</label>
+                          <label className="block text-[10px] font-bold text-blue-700 uppercase">Chicken Insured</label>
                           <input
                             type="number"
-                            value={subValues['pig'] ?? ''}
-                            onChange={(e) => handleSubValueChange('pig', e.target.value)}
-                            placeholder="Pig"
-                            className={`${inputClasses} placeholder:text-slate-300 placeholder:font-normal`}
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">Poultry</label>
-                          <input
-                            type="number"
-                            value={subValues['poultry'] ?? ''}
-                            onChange={(e) => handleSubValueChange('poultry', e.target.value)}
-                            placeholder="Poultry"
+                            value={subValues['chicken'] ?? ''}
+                            onChange={(e) => handleSubValueChange('chicken', e.target.value)}
+                            placeholder="Number of chicken"
                             className={`${inputClasses} placeholder:text-slate-300 placeholder:font-normal`}
                           />
                         </div>

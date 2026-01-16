@@ -21,24 +21,33 @@ const App: React.FC = () => {
   const [user, setUser] = useState<{ email: string; name: string; role: string } | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // Function to fetch entries from backend
+  const fetchEntries = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/submissions');
+      if (response.ok) {
+        const data = await response.json();
+        setEntries(data);
+      }
+    } catch (error) {
+      console.error('Error fetching submissions:', error);
+    }
+  };
+
   // Initialize with real data from backend
   useEffect(() => {
-    const fetchEntries = async () => {
-      try {
-        const response = await fetch('http://localhost:5000/api/submissions');
-        if (response.ok) {
-          const data = await response.json();
-          setEntries(data);
-        }
-      } catch (error) {
-        console.error('Error fetching submissions:', error);
-      }
-    };
     fetchEntries();
   }, []);
 
-  const handleAddEntry = (entry: MonitoringEntry) => {
-    // If we're adding an entry that already exists (update), replace it
+  // Refresh entries when view changes to analytics, responses, or calculator
+  useEffect(() => {
+    if (activeView === 'analytics' || activeView === 'responses' || activeView === 'calculator') {
+      fetchEntries();
+    }
+  }, [activeView]);
+
+  const handleAddEntry = async (entry: MonitoringEntry) => {
+    // If we're adding an entry that already exists (update), replace it locally
     const entryId = (entry as any)._id;
     if (entryId) {
       setEntries(prev => prev.map(e => (e as any)._id === entryId ? entry : e));
@@ -46,6 +55,9 @@ const App: React.FC = () => {
       setEntries(prev => [entry, ...prev]);
     }
     setEditingEntry(null);
+
+    // Refresh from database to ensure data is in sync
+    await fetchEntries();
   };
 
   const handleDeleteEntry = async (id: string) => {

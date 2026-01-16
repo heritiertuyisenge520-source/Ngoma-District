@@ -22,7 +22,9 @@ export const calculateQuarterProgress = ({ indicator, entries, quarterId, months
     const isCumulative = !isPercentage && !isDecreasing; // Default to cumulative if not specified
 
     // 1. Calculate Total Actual for the Quarter
-    const quarterEntries = entries.filter(e => monthsInQuarter.includes(e.month));
+    // User data is ALREADY cumulative, so we only need the selected quarter's entries
+    // Filter entries by quarterId
+    const quarterEntries = entries.filter(e => e.quarterId === quarterId);
 
     // For standard cumulative, we sum the actuals of the months (e.g. Jan + Feb + Mar)
     // For percentage, usually we might average them OR take the latest? 
@@ -105,6 +107,32 @@ export const calculateQuarterProgress = ({ indicator, entries, quarterId, months
     let performance = 0;
     let subIndicatorDetails: any[] = [];
 
+    // Legacy key mapping for backwards compatibility with old database data
+    const legacyKeyMap: Record<string, string[]> = {
+        'chicken': ['poultry', 'chicken'],      // Indicator 31
+        'maize': ['maize_kg', 'maize'],         // Indicator 8
+        'soya': ['soya_kg', 'soya'],            // Indicator 8
+        'lsd': ['lsd', 'bq'],                   // Indicator 24 - bq was used for lsd in old data
+    };
+
+    // Helper to get value with legacy key fallback
+    const getSubValue = (subValues: Record<string, number> | undefined, key: string): number => {
+        if (!subValues) return 0;
+
+        // Try the correct key first
+        if (subValues[key] !== undefined) return subValues[key];
+
+        // Try legacy keys
+        const legacyKeys = legacyKeyMap[key];
+        if (legacyKeys) {
+            for (const legacyKey of legacyKeys) {
+                if (subValues[legacyKey] !== undefined) return subValues[legacyKey];
+            }
+        }
+
+        return 0;
+    };
+
     if (indicator.subIndicatorIds) {
         const subMapping = indicator.subIndicatorIds;
 
@@ -112,7 +140,7 @@ export const calculateQuarterProgress = ({ indicator, entries, quarterId, months
             const subIndicator = INDICATORS.find(i => i.id === subId);
             if (subIndicator) {
                 const subActual = quarterEntries.reduce((acc, curr) => {
-                    const val = curr.subValues?.[key] || 0;
+                    const val = getSubValue(curr.subValues, key);
                     return acc + val;
                 }, 0);
 
@@ -185,6 +213,26 @@ export const calculateAnnualProgress = (indicator: Indicator, entries: any[]) =>
     // Collect all entries for the indicator
     const indicatorEntries = entries.filter(e => e.indicatorId === indicator.id);
 
+    // Legacy key mapping for backwards compatibility with old database data
+    const legacyKeyMap: Record<string, string[]> = {
+        'chicken': ['poultry', 'chicken'],
+        'maize': ['maize_kg', 'maize'],
+        'soya': ['soya_kg', 'soya'],
+        'lsd': ['lsd', 'bq'],
+    };
+
+    const getSubValue = (subValues: Record<string, number> | undefined, key: string): number => {
+        if (!subValues) return 0;
+        if (subValues[key] !== undefined) return subValues[key];
+        const legacyKeys = legacyKeyMap[key];
+        if (legacyKeys) {
+            for (const legacyKey of legacyKeys) {
+                if (subValues[legacyKey] !== undefined) return subValues[legacyKey];
+            }
+        }
+        return 0;
+    };
+
     if (indicator.subIndicatorIds) {
         let subPerformances: number[] = [];
         const subMapping = indicator.subIndicatorIds;
@@ -192,7 +240,7 @@ export const calculateAnnualProgress = (indicator: Indicator, entries: any[]) =>
         Object.entries(subMapping).forEach(([key, subId]) => {
             const subIndicator = INDICATORS.find(i => i.id === subId);
             if (subIndicator) {
-                const subActual = indicatorEntries.reduce((acc, curr) => acc + (curr.subValues?.[key] || 0), 0);
+                const subActual = indicatorEntries.reduce((acc, curr) => acc + getSubValue(curr.subValues, key), 0);
                 const subTarget = parseValue(subIndicator.targets.annual);
 
                 if (subTarget > 0) {

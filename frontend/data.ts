@@ -40,18 +40,30 @@ export const INDICATORS: Indicator[] = [
     "id": "3",
     "name": "Ha of land use consolidation for priority crops",
     "targets": {
+      "q1": 0,
+      "q2": 0,
+      "q3": 0,
+      "q4": 0,
+      "annual": 0
+    },
+    "isDual": true,
+    "subIndicatorIds": {
+      "maize": "3a",
+      "cassava": "4",
+      "rice": "5",
+      "beans": "6",
+      "soya": "7"
+    }
+  },
+  {
+    "id": "3a",
+    "name": "Area under land use consolidation for Maize(Ha)",
+    "targets": {
       "q1": 3340,
       "q2": 17568,
       "q3": 335,
       "q4": 0,
       "annual": 21243
-    },
-    "isDual": true,
-    "subIndicatorIds": {
-      "cassava": "4",
-      "rice": "5",
-      "beans": "6",
-      "soya": "7"
     }
   },
   {
@@ -102,13 +114,28 @@ export const INDICATORS: Indicator[] = [
     "id": "8",
     "name": "Quantity of improved seed",
     "targets": {
+      "q1": 0,
+      "q2": 0,
+      "q3": 0,
+      "q4": 0,
+      "annual": 0
+    },
+    "isDual": true,
+    "subIndicatorIds": {
+      "maize": "8a",
+      "soya": "9"
+    }
+  },
+  {
+    "id": "8a",
+    "name": "Quantity of improved Maize seeds used (Kg)",
+    "targets": {
       "q1": 25122,
       "q2": 167762,
       "q3": 6040,
       "q4": 0,
       "annual": 198924
-    },
-    "isDual": true
+    }
   },
   {
     "id": "9",
@@ -125,11 +152,11 @@ export const INDICATORS: Indicator[] = [
     "id": "10",
     "name": "Quantity of mineral fertilizer used",
     "targets": {
-      "q1": 92900,
-      "q2": 406826,
-      "q3": 110274,
+      "q1": 0,
+      "q2": 0,
+      "q3": 0,
       "q4": 0,
-      "annual": 610000
+      "annual": 0
     },
     "isDual": true,
     "subIndicatorIds": {
@@ -199,18 +226,30 @@ export const INDICATORS: Indicator[] = [
     "name": "Area of crops insured(Ha)",
     "targets": {
       "q1": 0,
-      "q2": 205,
-      "q3": 5,
+      "q2": 0,
+      "q3": 0,
       "q4": 0,
-      "annual": 210
+      "annual": 0
     },
     "isDual": true,
     "subIndicatorIds": {
+      "maize": "16a",
       "rice": "17",
       "beans": "18",
       "chilli": "19",
       "soybeans": "20",
       "french_beans": "21"
+    }
+  },
+  {
+    "id": "16a",
+    "name": "Area of Maize insured (Ha)",
+    "targets": {
+      "q1": 0,
+      "q2": 205,
+      "q3": 5,
+      "q4": 0,
+      "annual": 210
     }
   },
   {
@@ -296,9 +335,9 @@ export const INDICATORS: Indicator[] = [
     "targets": {
       "q1": 0,
       "q2": 0,
-      "q3": 34000,
+      "q3": 0,
       "q4": 0,
-      "annual": 34000
+      "annual": 0
     },
     "isDual": true,
     "subIndicatorIds": {
@@ -356,15 +395,16 @@ export const INDICATORS: Indicator[] = [
     "id": "29",
     "name": "Number of small livestock vaccinated against RVF",
     "targets": {
-      "q1": 64600,
+      "q1": 0,
       "q2": 0,
       "q3": 0,
       "q4": 0,
-      "annual": 64600
+      "annual": 0
     },
     "isDual": true,
     "subIndicatorIds": {
-      "sheep": "30"
+      "sheep": "30",
+      "goats": "30a"
     }
   },
   {
@@ -379,14 +419,25 @@ export const INDICATORS: Indicator[] = [
     }
   },
   {
+    "id": "30a",
+    "name": "Number of Goats vaccinated against RVF",
+    "targets": {
+      "q1": 64600,
+      "q2": 0,
+      "q3": 0,
+      "q4": 0,
+      "annual": 64600
+    }
+  },
+  {
     "id": "31",
     "name": "Number of livestock insured",
     "targets": {
-      "q1": 150,
-      "q2": 200,
-      "q3": 450,
-      "q4": 230,
-      "annual": 1030
+      "q1": 0,
+      "q2": 0,
+      "q3": 0,
+      "q4": 0,
+      "annual": 0
     },
     "isDual": true,
     "subIndicatorIds": {
