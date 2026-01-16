@@ -15,8 +15,8 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(helmet());
-// CORS configuration - allow production and dev origins
+
+// CORS configuration - allow production and dev origins (MUST be before helmet)
 const allowedOrigins = process.env.FRONTEND_URL
     ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
     : [
@@ -24,12 +24,27 @@ const allowedOrigins = process.env.FRONTEND_URL
         'http://localhost:5173',
         'https://full-system-three.vercel.app'
     ];
+
+// Handle preflight requests explicitly
+app.options('*', cors({
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(cors({
     origin: allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Helmet for security (after CORS to not override CORS headers)
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
