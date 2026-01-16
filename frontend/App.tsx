@@ -13,6 +13,8 @@ import LoginView from './views/LoginView';
 import { MonitoringEntry } from './types';
 import { PILLARS, QUARTERS } from './data';
 import { calculateQuarterProgress } from './utils/progressUtils';
+import { API_ENDPOINTS, getSubmissionUrl } from './config/api';
+
 
 const App: React.FC = () => {
   const [activeView, setActiveView] = useState<'fill' | 'preview' | 'analytics' | 'targets' | 'ppt' | 'calculator' | 'responses'>('analytics');
@@ -24,7 +26,7 @@ const App: React.FC = () => {
   // Function to fetch entries from backend
   const fetchEntries = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/submissions');
+      const response = await fetch(API_ENDPOINTS.SUBMISSIONS);
       if (response.ok) {
         const data = await response.json();
         setEntries(data);
@@ -63,7 +65,7 @@ const App: React.FC = () => {
   const handleDeleteEntry = async (id: string) => {
     if (confirm('Are you sure you want to delete this submission?')) {
       try {
-        const response = await fetch(`http://localhost:5000/api/submissions/${id}`, { method: 'DELETE' });
+        const response = await fetch(getSubmissionUrl(id), { method: 'DELETE' });
         if (response.ok) {
           setEntries(prev => prev.filter(e => (e as any)._id !== id));
         }
@@ -81,7 +83,7 @@ const App: React.FC = () => {
   const handleClearEntries = async () => {
     if (confirm('Are you sure you want to clear all reporting data? This will remove all submissions from the database.')) {
       try {
-        const response = await fetch('http://localhost:5000/api/clear-data', { method: 'POST' });
+        const response = await fetch(API_ENDPOINTS.CLEAR_DATA, { method: 'POST' });
         if (response.ok) {
           setEntries([]);
           alert('Database cleared successfully');

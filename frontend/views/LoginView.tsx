@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API_ENDPOINTS } from '../config/api';
 
 interface LoginViewProps {
     onLogin: (user: { email: string; name: string; role: string }) => void;
@@ -95,7 +96,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
             }
 
             try {
-                const response = await fetch('http://localhost:5000/api/login', {
+                const response = await fetch(API_ENDPOINTS.LOGIN, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password }),
@@ -135,7 +136,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
             const fullName = `${firstName} ${lastName}`;
 
             try {
-                const response = await fetch('http://localhost:5000/api/register', {
+                const response = await fetch(API_ENDPOINTS.REGISTER, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -187,7 +188,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
         }
 
         try {
-            const response = await fetch('http://localhost:5000/api/reset-password', {
+            const response = await fetch(API_ENDPOINTS.RESET_PASSWORD, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

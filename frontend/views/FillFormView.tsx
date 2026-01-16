@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import SummaryCard from '../components/SummaryCard';
 import { PILLARS, Indicator } from '../data';
 import { MonitoringEntry } from '../types';
+import { API_ENDPOINTS, getSubmissionUrl } from '../config/api';
 
 interface FillFormViewProps {
   entries: MonitoringEntry[];
@@ -46,8 +47,8 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
   // Hierarchy Stats
   const stats = useMemo(() => {
     const pillarsCount = PILLARS.length;
-    const outputsCount = 0; // No outputs in simplified structure
-    const indicatorsCount = PILLARS.reduce((acc, p) => acc + p.indicators.length, 0);
+    const outputsCount = PILLARS.reduce((acc, p) => acc + p.outputs.length, 0);
+    const indicatorsCount = PILLARS.reduce((acc, p) => acc + p.outputs.flatMap(o => o.indicators).length, 0);
     return { pillarsCount, outputsCount, indicatorsCount };
   }, []);
 
@@ -55,7 +56,7 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
 
   const indicators = useMemo(() => {
     if (!selectedPillar) return [];
-    return selectedPillar.indicators.map(indicator => ({
+    return selectedPillar.outputs.flatMap(o => o.indicators).map(indicator => ({
       id: indicator.id,
       name: indicator.name,
       isDual: indicator.isDual
@@ -131,8 +132,8 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
 
     const isEditing = !!(initialEntry as any)?._id;
     const url = isEditing
-      ? `http://localhost:5000/api/submissions/${(initialEntry as any)._id}`
-      : 'http://localhost:5000/api/submissions';
+      ? getSubmissionUrl((initialEntry as any)._id)
+      : API_ENDPOINTS.SUBMISSIONS;
 
     try {
       const response = await fetch(url, {
@@ -323,7 +324,7 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                   <span>achievements</span>
                   {selectedIndicator && quarterId && (
                     <span className="text-red-600 font-bold bg-red-50 px-2 py-0.5 rounded border border-red-100 italic normal-case tracking-normal">
-                      Fixed Target: {selectedPillar?.indicators.find(i => i.id === indicatorId)?.targets[quarterId as keyof Indicator['targets']] || 0}
+                      Fixed Target: {selectedPillar?.outputs.flatMap(o => o.indicators).find(i => i.id === indicatorId)?.targets[quarterId as keyof Indicator['targets']] || 0}
                     </span>
                   )}
                 </h4>
