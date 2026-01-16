@@ -16,13 +16,19 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(helmet());
-// CORS configuration - allow both common dev ports
-const allowedOrigins = process.env.FRONTEND_URL 
+// CORS configuration - allow production and dev origins
+const allowedOrigins = process.env.FRONTEND_URL
     ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
-    : ['http://localhost:3000', 'http://localhost:5173'];
+    : [
+        'http://localhost:3000',
+        'http://localhost:5173',
+        'https://full-system-three.vercel.app'
+    ];
 app.use(cors({
     origin: allowedOrigins,
-    credentials: true
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
