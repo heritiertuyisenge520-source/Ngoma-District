@@ -274,7 +274,11 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                     required
                   >
                     <option value="" className="text-slate-400">-- Choose Indicator --</option>
-                    {indicators.map(i => <option key={i.id} value={i.id} className="text-slate-900 font-medium">{i.name}</option>)}
+                    {indicators.length === 0 ? (
+                      <option value="" className="text-slate-400" disabled>-- No indicators available for this pillar --</option>
+                    ) : (
+                      indicators.map(i => <option key={i.id} value={i.id} className="text-slate-900 font-medium">{i.name}</option>)
+                    )}
                   </select>
                   {chevronIcon}
                 </div>

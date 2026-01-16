@@ -25,18 +25,20 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, entries, user, onLogout, 
     let count = 0;
 
     PILLARS.forEach(p => {
-      p.indicators.forEach(i => {
-        const indEntries = entries.filter(e => e.indicatorId === i.id);
-        if (indEntries.length > 0) {
-          const stats = calculateQuarterProgress({
-            indicator: i,
-            entries: indEntries,
-            quarterId: targetQuarterId,
-            monthsInQuarter: targetQuarter.months
-          });
-          totalPerf += stats.performance;
-          count++;
-        }
+      p.outputs?.forEach(output => {
+        output.indicators?.forEach(i => {
+          const indEntries = entries.filter(e => e.indicatorId === i.id);
+          if (indEntries.length > 0) {
+            const stats = calculateQuarterProgress({
+              indicator: i,
+              entries: indEntries,
+              quarterId: targetQuarterId,
+              monthsInQuarter: targetQuarter.months
+            });
+            totalPerf += stats.performance;
+            count++;
+          }
+        });
       });
     });
 
@@ -141,7 +143,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, entries, user, onLogout, 
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center font-bold text-white shadow-lg border border-white/10">
-              {user?.name.charAt(0)}
+              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
             </div>
             <div className="overflow-hidden">
               <p className="text-sm font-bold text-white truncate w-24">{user?.name}</p>

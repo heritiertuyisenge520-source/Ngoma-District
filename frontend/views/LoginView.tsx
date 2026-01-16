@@ -103,9 +103,19 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                 });
 
                 if (response.ok) {
-                    const userData = await response.json();
-                    alert(`Welcome back, ${userData.name}!`);
-                    onLogin({ email: userData.email, name: userData.name, role: userData.role });
+                    const responseData = await response.json();
+                    // Backend returns { user: { id, email, name, role }, token }
+                    const userData = responseData.user || responseData;
+                    const userName = userData.name || 'User';
+                    
+                    // Show welcome message with user's name from database
+                    alert(`Welcome back, ${userName}!`);
+                    
+                    onLogin({ 
+                        email: userData.email, 
+                        name: userName, 
+                        role: userData.role 
+                    });
                 } else {
                     const err = await response.json();
                     alert(err.message || "Invalid credentials. Please try again or register.");

@@ -18,7 +18,10 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries }) => {
   const reportRef = useRef<HTMLDivElement>(null);
 
   const selectedPillar = useMemo(() => PILLARS.find(p => p.id === selectedPillarId), [selectedPillarId]);
-  const availableIndicators = useMemo(() => selectedPillar?.indicators || [], [selectedPillar]);
+  const availableIndicators = useMemo(() => 
+    selectedPillar?.outputs?.flatMap(output => output.indicators || []) || [], 
+    [selectedPillar]
+  );
 
   useMemo(() => {
     if (availableIndicators.length > 0 && !availableIndicators.find(i => i.id === selectedIndicatorId)) {
@@ -282,8 +285,12 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries }) => {
         </div>
         <div className="space-y-1.5">
           <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block">Indicator</label>
-          <select value={selectedIndicatorId} onChange={(e) => setSelectedIndicatorId(e.target.value)} className={inputClasses}>
-            {availableIndicators.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+          <select value={selectedIndicatorId} onChange={(e) => setSelectedIndicatorId(e.target.value)} className={inputClasses} disabled={availableIndicators.length === 0}>
+            {availableIndicators.length === 0 ? (
+              <option value="">-- No indicators available --</option>
+            ) : (
+              availableIndicators.map(i => <option key={i.id} value={i.id}>{i.name}</option>)
+            )}
           </select>
         </div>
         <div className="space-y-1.5">

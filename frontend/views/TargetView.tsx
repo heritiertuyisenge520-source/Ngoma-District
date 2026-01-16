@@ -11,7 +11,7 @@ const TargetView: React.FC = () => {
 
   const allIndicators = useMemo(() => {
     if (!selectedPillar) return [];
-    return selectedPillar.indicators || [];
+    return selectedPillar.outputs?.flatMap(output => output.indicators || []) || [];
   }, [selectedPillar]);
 
   const getSubIndicators = (indicator: Indicator) => {

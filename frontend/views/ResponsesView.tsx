@@ -67,8 +67,8 @@ const ResponsesView: React.FC<ResponsesViewProps> = ({ entries, user, onEdit, on
 
     const handleDownloadPDF = (entry: MonitoringEntry) => {
         const doc = new jsPDF();
-        const pillar = PILLARS.find(p => p.name === entry.pillarId);
-        const indicator = pillar?.indicators.find(i => i.id === entry.indicatorId);
+        const pillar = PILLARS.find(p => p.name === entry.pillarId || p.id === entry.pillarId || p.name === entry.pillarName);
+        const indicator = pillar?.outputs?.flatMap(output => output.indicators || []).find(i => i.id === entry.indicatorId);
 
         doc.setFillColor(15, 23, 42);
         doc.rect(0, 0, 210, 40, 'F');
@@ -127,8 +127,8 @@ const ResponsesView: React.FC<ResponsesViewProps> = ({ entries, user, onEdit, on
         doc.text(`Total Entries: ${filteredEntries.length} | Date: ${new Date().toLocaleString()}`, 105, 32, { align: 'center' });
 
         const tableBody = filteredEntries.map(entry => {
-            const pillar = PILLARS.find(p => p.name === entry.pillarId);
-            const indicator = pillar?.indicators.find(i => i.id === entry.indicatorId);
+            const pillar = PILLARS.find(p => p.name === entry.pillarId || p.id === entry.pillarId || p.name === entry.pillarName);
+            const indicator = pillar?.outputs?.flatMap(output => output.indicators || []).find(i => i.id === entry.indicatorId);
             return [
                 getQuarterName(entry.quarterId),
                 entry.month,
@@ -302,8 +302,8 @@ const ResponsesView: React.FC<ResponsesViewProps> = ({ entries, user, onEdit, on
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
                                             {qEntries.map((entry, idx) => {
-                                                const pillar = PILLARS.find(p => p.name === entry.pillarId);
-                                                const indicator = pillar?.indicators.find(i => i.id === entry.indicatorId);
+                                                const pillar = PILLARS.find(p => p.name === entry.pillarId || p.id === entry.pillarId || p.name === entry.pillarName);
+                                                const indicator = pillar?.outputs?.flatMap(output => output.indicators || []).find(i => i.id === entry.indicatorId);
 
                                                 return (
                                                     <tr key={idx} className="hover:bg-slate-50 transition-colors">

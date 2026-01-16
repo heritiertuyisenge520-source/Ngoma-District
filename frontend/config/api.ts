@@ -12,10 +12,10 @@ export const API_BASE_URL = getApiUrl();
 
 export const API_ENDPOINTS = {
     // Auth endpoints
-    LOGIN: `${API_BASE_URL}/api/login`,
-    REGISTER: `${API_BASE_URL}/api/register`,
-    VERIFY_USER: `${API_BASE_URL}/api/verify-user`,
-    RESET_PASSWORD: `${API_BASE_URL}/api/reset-password`,
+    LOGIN: `${API_BASE_URL}/api/auth/login`,
+    REGISTER: `${API_BASE_URL}/api/auth/register`,
+    VERIFY_USER: `${API_BASE_URL}/api/auth/verify-user`,
+    RESET_PASSWORD: `${API_BASE_URL}/api/auth/reset-password`,
 
     // Data endpoints
     SUBMISSIONS: `${API_BASE_URL}/api/submissions`,
