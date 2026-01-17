@@ -166,25 +166,38 @@ export const calculateQuarterProgress = ({ indicator, entries, quarterId, months
                     }
                 }
 
+                // Always show sub-indicator, even if target is 0
+                let subPerf = 0;
                 if (subTarget > 0) {
-                    let subPerf = (subActual / subTarget) * 100;
+                    subPerf = (subActual / subTarget) * 100;
                     if (subIndicator.measurementType === 'decreasing') {
                         subPerf = subActual > 0 ? (subTarget / subActual) * 100 : 100;
                     }
-                    subIndicatorDetails.push({
-                        key,
-                        id: subId,
-                        name: subIndicator.name,
-                        actual: subActual,
-                        target: subTarget,
-                        performance: Math.min(subPerf, 999)
-                    });
+                } else if (subActual > 0) {
+                    // If no target but has actual, show 100% (exceeded no target)
+                    subPerf = 100;
                 }
+
+                subIndicatorDetails.push({
+                    key,
+                    id: subId,
+                    name: subIndicator.name,
+                    actual: subActual,
+                    target: subTarget,
+                    performance: Math.min(subPerf, 100)
+                });
             }
         });
 
         if (subIndicatorDetails.length > 0) {
-            performance = subIndicatorDetails.reduce((a, b) => a + b.performance, 0) / subIndicatorDetails.length;
+            // Only average sub-indicators that have targets for proper calculation
+            const subsWithTargets = subIndicatorDetails.filter(s => s.target > 0);
+            if (subsWithTargets.length > 0) {
+                performance = subsWithTargets.reduce((a, b) => a + b.performance, 0) / subsWithTargets.length;
+            } else {
+                // If no sub-indicators have targets, use the fallback
+                performance = totalActual > 0 ? 100 : 0;
+            }
         } else {
             performance = (totalActual / targetDenominator) * 100;
         }
@@ -202,7 +215,7 @@ export const calculateQuarterProgress = ({ indicator, entries, quarterId, months
     return {
         totalActual,
         target: targetDenominator,
-        performance: Math.min(performance, 999),
+        performance: Math.min(performance, 100),
         trend: performance >= 90 ? 'on-track' : performance >= 50 ? 'improving' : 'needs-attention',
         nextTarget,
         subIndicatorDetails
@@ -254,7 +267,9 @@ export const calculateAnnualProgress = (indicator: Indicator, entries: any[]) =>
         });
 
         if (subPerformances.length > 0) {
-            return Math.min(subPerformances.reduce((a, b) => a + b, 0) / subPerformances.length, 999);
+            // Cap each sub-performance at 100% before averaging
+            const cappedPerformances = subPerformances.map(p => Math.min(p, 100));
+            return Math.min(cappedPerformances.reduce((a, b) => a + b, 0) / cappedPerformances.length, 100);
         }
     }
 
@@ -268,7 +283,7 @@ export const calculateAnnualProgress = (indicator: Indicator, entries: any[]) =>
         performance = totalActual > 0 ? (annualTarget / totalActual) * 100 : 100;
     }
 
-    return Math.min(performance, 999);
+    return Math.min(performance, 100);
 };
 
 export const calculateMonthlyProgress = (indicator: Indicator, value: number, quarterId: string, itemEntries?: any[]) => {
@@ -318,8 +333,53 @@ export const calculateMonthlyProgress = (indicator: Indicator, value: number, qu
     if (targetDenominator === 0) return 0;
 
     if (isDecreasing) {
-        return value ? (targetDenominator / value) * 100 : 0;
+        return Math.min(value ? (targetDenominator / value) * 100 : 0, 100);
     }
 
-    return (value / targetDenominator) * 100;
+    return Math.min((value / targetDenominator) * 100, 100);
+};
+
+// Get unit label for an indicator based on its name or measurement type
+export const getIndicatorUnit = (indicator: Indicator): string => {
+    const name = indicator.name.toLowerCase();
+
+    // Percentage indicators
+    if (indicator.measurementType === 'percentage' ||
+        name.includes('rate') ||
+        name.includes('percentage') ||
+        name.includes('%')) {
+        return '(%)';
+    }
+
+    // Weight-based indicators
+    if (name.includes('kg') || name.includes('kilogram')) {
+        return '(Kg)';
+    }
+    if (name.includes('ton') || name.includes('tonnes') || name.includes('mt')) {
+        return '(Tons)';
+    }
+
+    // Area-based indicators
+    if (name.includes('hectare') || name.includes(' ha ') || name.endsWith(' ha')) {
+        return '(Ha)';
+    }
+
+    // Number/count indicators (default)
+    return '(N)';
+};
+
+// Get indicator display name with unit
+export const getIndicatorNameWithUnit = (indicator: Indicator): string => {
+    const unit = getIndicatorUnit(indicator);
+    // Don't add unit if it's already in the name
+    if (indicator.name.includes('(') && indicator.name.includes(')')) {
+        return indicator.name;
+    }
+    return `${indicator.name} ${unit}`;
+};
+
+// Get indicator number (1-126)
+export const getIndicatorNumber = (indicatorId: string, allIndicators: Indicator[]): number => {
+    const index = allIndicators.findIndex(i => i.id === indicatorId);
+    return index >= 0 ? index + 1 : 0;
 };

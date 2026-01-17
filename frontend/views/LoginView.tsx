@@ -1,8 +1,25 @@
 import React, { useState } from 'react';
 import { API_ENDPOINTS } from '../config/api';
 
+interface UserInfo {
+    email: string;
+    name: string;
+    role: string;
+    isApproved?: boolean;
+    userType?: 'super_admin' | 'head' | 'employee';
+    unit?: string;
+}
+
+interface IndicatorAssignment {
+    _id: string;
+    indicatorId: string;
+    indicatorName: string;
+    pillarId: string;
+    pillarName: string;
+}
+
 interface LoginViewProps {
-    onLogin: (user: { email: string; name: string; role: string }) => void;
+    onLogin: (user: UserInfo, assignedIndicators?: IndicatorAssignment[]) => void;
 }
 
 type ViewMode = 'login' | 'register' | 'reset';
@@ -23,6 +40,14 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
     const [resetSuccess, setResetSuccess] = useState(false);
     const [userVerified, setUserVerified] = useState(false);
     const [verifiedUserName, setVerifiedUserName] = useState('');
+
+    // Welcome modal state
+    const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+    const [welcomeUserData, setWelcomeUserData] = useState<{
+        name: string;
+        role: string;
+        userType: string;
+    } | null>(null);
 
     const positions = [
         'Mayor',
@@ -104,18 +129,29 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
 
                 if (response.ok) {
                     const responseData = await response.json();
-                    // Backend returns { user: { id, email, name, role }, token }
                     const userData = responseData.user || responseData;
                     const userName = userData.name || 'User';
-                    
-                    // Show welcome message with user's name from database
-                    alert(`Welcome back, ${userName}!`);
-                    
-                    onLogin({ 
-                        email: userData.email, 
-                        name: userName, 
-                        role: userData.role 
+
+                    // Show welcome modal with animation
+                    setWelcomeUserData({
+                        name: userName,
+                        role: userData.role,
+                        userType: userData.userType
                     });
+                    setShowWelcomeModal(true);
+
+                    // Auto-dismiss and login after 2 seconds
+                    setTimeout(() => {
+                        setShowWelcomeModal(false);
+                        onLogin({
+                            email: userData.email,
+                            name: userName,
+                            role: userData.role,
+                            isApproved: userData.isApproved,
+                            userType: userData.userType,
+                            unit: userData.unit
+                        }, responseData.assignedIndicators);
+                    }, 2500);
                 } else {
                     const err = await response.json();
                     alert(err.message || "Invalid credentials. Please try again or register.");
@@ -159,12 +195,34 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                     }),
                 });
 
+                const responseData = await response.json();
+
                 if (response.ok) {
-                    alert(`Registration successful! Welcome, ${fullName}!`);
-                    onLogin({ email, name: fullName, role: position });
+                    // Check if this is a pending registration
+                    if (responseData.pending) {
+                        alert(responseData.message);
+                        // Clear form and switch to login
+                        setEmail('');
+                        setFirstName('');
+                        setLastName('');
+                        setPosition('');
+                        setPassword('');
+                        setConfirmPassword('');
+                        setViewMode('login');
+                    } else {
+                        // Super admin or auto-approved user
+                        alert(`Registration successful! Welcome, ${fullName}!`);
+                        onLogin({
+                            email: responseData.user.email,
+                            name: responseData.user.name,
+                            role: responseData.user.role,
+                            isApproved: responseData.user.isApproved,
+                            userType: responseData.user.userType,
+                            unit: responseData.user.unit
+                        });
+                    }
                 } else {
-                    const err = await response.json();
-                    alert(err.message || "Registration failed. Please try again.");
+                    alert(responseData.message || "Registration failed. Please try again.");
                 }
             } catch (error) {
                 console.error("Registration error:", error);
@@ -252,6 +310,34 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-[#0a0f1c] via-[#0f172a] to-[#1a1f35] flex items-center justify-center p-4 selection:bg-blue-500 selection:text-white">
+            {/* Welcome Modal */}
+            {showWelcomeModal && welcomeUserData && (
+                <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/60">
+                    <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-12 shadow-2xl max-w-md w-full mx-4 text-center animate-in zoom-in duration-500 border border-white/10">
+                        <div className="w-24 h-24 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl shadow-emerald-500/30 animate-bounce">
+                            <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                        <h2 className="text-3xl font-black text-white mb-2">
+                            Welcome back!
+                        </h2>
+                        <p className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400 mb-4">
+                            {welcomeUserData.name}
+                        </p>
+                        <p className="text-slate-400 font-medium mb-6">
+                            {welcomeUserData.role}
+                        </p>
+                        <div className="flex justify-center space-x-1">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                            <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                            <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        </div>
+                        <p className="text-slate-500 text-sm mt-4">Redirecting to dashboard...</p>
+                    </div>
+                </div>
+            )}
+
             {/* Animated Background Elements */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-600/15 rounded-full blur-[150px] animate-pulse"></div>

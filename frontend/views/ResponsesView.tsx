@@ -1,12 +1,20 @@
 import React, { useState, useMemo } from 'react';
-import { PILLARS, QUARTERS } from '../data';
+import { PILLARS, QUARTERS, Indicator } from '../data';
 import { MonitoringEntry } from '../types';
+import { API_ENDPOINTS } from '../config/api';
+import { getIndicatorUnit } from '../utils/progressUtils';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 interface ResponsesViewProps {
     entries: MonitoringEntry[];
-    user: { email: string; name: string; role: string } | null;
+    user: {
+        email: string;
+        name: string;
+        role: string;
+        userType?: 'super_admin' | 'head' | 'employee';
+        unit?: string;
+    } | null;
     onEdit: (entry: MonitoringEntry) => void;
     onDelete: (id: string) => void;
     onClear?: () => void;
@@ -15,6 +23,72 @@ interface ResponsesViewProps {
 const ResponsesView: React.FC<ResponsesViewProps> = ({ entries, user, onEdit, onDelete, onClear }) => {
     const [filterQuarter, setFilterQuarter] = useState<string>('all');
     const [filterPillar, setFilterPillar] = useState<string>('all');
+
+    // Edit request state for employees
+    const [showEditRequestModal, setShowEditRequestModal] = useState(false);
+    const [editingEntry, setEditingEntry] = useState<MonitoringEntry | null>(null);
+    const [newValue, setNewValue] = useState<string>('');
+    const [newComments, setNewComments] = useState<string>('');
+    const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const isEmployee = user?.userType === 'employee';
+
+    const handleEditClick = (entry: MonitoringEntry) => {
+        if (isEmployee) {
+            // Employees must request edit through head of unit
+            setEditingEntry(entry);
+            setNewValue(entry.value.toString());
+            setNewComments(entry.comments || '');
+            setShowEditRequestModal(true);
+        } else {
+            // Other users can edit directly
+            onEdit(entry);
+        }
+    };
+
+    const handleSubmitEditRequest = async () => {
+        if (!editingEntry || !user) return;
+
+        setIsSubmitting(true);
+        try {
+            const pillar = PILLARS.find(p => p.name === editingEntry.pillarId || p.id === editingEntry.pillarId || p.name === editingEntry.pillarName);
+            const indicator = pillar?.outputs?.flatMap(output => output.indicators || []).find(i => i.id === editingEntry.indicatorId);
+
+            const response = await fetch(API_ENDPOINTS.DATA_CHANGE_REQUEST, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    submissionId: (editingEntry as any)._id,
+                    requestedBy: user.email,
+                    requestedByName: user.name,
+                    indicatorId: editingEntry.indicatorId,
+                    indicatorName: indicator?.name || editingEntry.indicatorName,
+                    pillarName: editingEntry.pillarName || editingEntry.pillarId,
+                    quarterId: editingEntry.quarterId,
+                    month: editingEntry.month,
+                    oldValue: editingEntry.value,
+                    newValue: Number(newValue),
+                    oldComments: editingEntry.comments,
+                    newComments: newComments,
+                    unit: user.unit
+                })
+            });
+
+            if (response.ok) {
+                setSubmitSuccess('Your edit request has been submitted! Your data will be updated if the Head of Unit approves it.');
+                setShowEditRequestModal(false);
+                setTimeout(() => setSubmitSuccess(null), 5000);
+            } else {
+                alert('Failed to submit edit request');
+            }
+        } catch (error) {
+            console.error('Error submitting edit request:', error);
+            alert('Error connecting to server');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
     // Filter entries based on selected quarter and pillar
     const filteredEntries = useMemo(() => {
@@ -63,6 +137,58 @@ const ResponsesView: React.FC<ResponsesViewProps> = ({ entries, user, onEdit, on
     const getQuarterName = (qId: string) => {
         const quarter = QUARTERS.find(q => q.id === qId);
         return quarter?.name || qId;
+    };
+
+    // Global indicator numbering
+    const indicatorNumbering = new Map<string, number>();
+    let counter = 1;
+    PILLARS.forEach(pillar => {
+        pillar.outputs.forEach(output => {
+            output.indicators.forEach(indicator => {
+                indicatorNumbering.set(indicator.id, counter++);
+            });
+        });
+    });
+
+    // Download CSV for filtered entries
+    const handleDownloadCSV = () => {
+        if (filteredEntries.length === 0) {
+            alert('No entries to download');
+            return;
+        }
+
+        const headers = ['#', 'Pillar', 'Indicator', 'Quarter', 'Month', 'Value', 'Submitted By', 'Date', 'Comments'];
+        const csvContent = [
+            headers.join(','),
+            ...filteredEntries.map((entry, idx) => {
+                const pillar = PILLARS.find(p => p.name === entry.pillarId || p.id === entry.pillarId || p.name === entry.pillarName);
+                const indicator = pillar?.outputs?.flatMap(output => output.indicators || []).find(i => i.id === entry.indicatorId);
+                const indicatorNum = indicatorNumbering.get(entry.indicatorId) || 0;
+
+                return [
+                    idx + 1,
+                    `"${entry.pillarName || entry.pillarId || ''}"`,
+                    `"${indicatorNum}. ${indicator?.name || entry.indicatorName || ''}"`,
+                    getQuarterName(entry.quarterId),
+                    entry.month,
+                    entry.value,
+                    `"${(entry as any).submittedBy || 'Unknown'}"`,
+                    new Date(entry.timestamp).toLocaleDateString(),
+                    `"${(entry.comments || '').replace(/"/g, '""')}"`
+                ].join(',');
+            })
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        const quarterName = filterQuarter === 'all' ? 'All_Quarters' : getQuarterName(filterQuarter);
+        link.setAttribute('download', `Responses_${quarterName}_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     const handleDownloadPDF = (entry: MonitoringEntry) => {
@@ -163,13 +289,120 @@ const ResponsesView: React.FC<ResponsesViewProps> = ({ entries, user, onEdit, on
 
     return (
         <div className="space-y-6 md:space-y-8 animate-in fade-in duration-500">
+            {/* Edit Request Modal for Employees */}
+            {showEditRequestModal && editingEntry && (
+                <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50" onClick={() => setShowEditRequestModal(false)}>
+                    <div className="bg-white rounded-2xl p-8 shadow-2xl max-w-lg w-full mx-4 animate-in zoom-in duration-300" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center space-x-3 mb-6">
+                            <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
+                                <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold text-slate-900">Request Data Edit</h2>
+                                <p className="text-sm text-slate-500">Your request will be sent to the Head of Unit for approval</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-slate-50 p-4 rounded-xl mb-4">
+                            <p className="text-xs text-slate-500 font-semibold uppercase mb-1">Indicator</p>
+                            <p className="text-sm font-medium text-slate-800">{editingEntry.indicatorName}</p>
+                            <p className="text-xs text-slate-400 mt-1">{editingEntry.month} - {editingEntry.quarterId.toUpperCase()}</p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div className="bg-red-50 p-3 rounded-xl">
+                                <p className="text-xs text-red-500 font-semibold">Current Value</p>
+                                <p className="text-lg font-bold text-red-600">{editingEntry.value.toLocaleString()}</p>
+                            </div>
+                            <div>
+                                <label className="block text-xs text-emerald-600 font-semibold mb-1">New Value</label>
+                                <input
+                                    type="number"
+                                    value={newValue}
+                                    onChange={e => setNewValue(e.target.value)}
+                                    className="w-full p-3 rounded-xl border-2 border-emerald-200 bg-emerald-50 text-emerald-700 font-bold text-lg focus:border-emerald-500 outline-none"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="mb-6">
+                            <label className="block text-xs font-bold text-slate-600 mb-2 uppercase">Comments (optional)</label>
+                            <textarea
+                                value={newComments}
+                                onChange={e => setNewComments(e.target.value)}
+                                placeholder="Explain why you're requesting this change..."
+                                className="w-full p-3 rounded-xl border border-slate-200 text-sm resize-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
+                                rows={3}
+                            />
+                        </div>
+
+                        <div className="flex space-x-3">
+                            <button
+                                onClick={() => setShowEditRequestModal(false)}
+                                className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSubmitEditRequest}
+                                disabled={isSubmitting}
+                                className="flex-1 px-4 py-3 bg-amber-600 text-white font-bold rounded-xl hover:bg-amber-700 transition-colors disabled:opacity-50 flex items-center justify-center space-x-2"
+                            >
+                                {isSubmitting ? (
+                                    <span>Submitting...</span>
+                                ) : (
+                                    <>
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                        </svg>
+                                        <span>Submit Edit Request</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Success Message Banner */}
+            {submitSuccess && (
+                <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50">
+                    <div className="bg-emerald-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center space-x-3 animate-in slide-in-from-top duration-300">
+                        <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                        <p className="font-semibold">{submitSuccess}</p>
+                        <button onClick={() => setSubmitSuccess(null)} className="ml-4 text-white/70 hover:text-white">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            )}
+
             <header className="flex flex-col md:flex-row justify-between md:items-end gap-4">
                 <div>
                     <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900">Submissions by Quarter</h1>
                     <p className="mt-1 md:mt-2 text-sm md:text-base text-slate-600 font-medium">Review achievements grouped by reporting period.</p>
                 </div>
-                <div className="flex space-x-3">
-                    {filteredEntries.length > 0 && (user?.role === 'Planning director' || user?.role === 'Unity director') && (
+                <div className="flex space-x-3 flex-wrap gap-2">
+                    {filteredEntries.length > 0 && (user?.userType === 'super_admin' || user?.userType === 'head') && (
+                        <button
+                            onClick={handleDownloadCSV}
+                            className="px-4 py-2 bg-blue-50 text-blue-600 text-xs font-bold uppercase tracking-widest rounded-xl border border-blue-100 hover:bg-blue-100 transition-colors flex items-center space-x-2"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            <span>Download CSV</span>
+                        </button>
+                    )}
+                    {filteredEntries.length > 0 && (user?.userType === 'super_admin' || user?.userType === 'head') && (
                         <button
                             onClick={handleDownloadAllPDF}
                             className="px-4 py-2 bg-emerald-50 text-emerald-600 text-xs font-bold uppercase tracking-widest rounded-xl border border-emerald-100 hover:bg-emerald-100 transition-colors flex items-center space-x-2"
@@ -177,7 +410,7 @@ const ResponsesView: React.FC<ResponsesViewProps> = ({ entries, user, onEdit, on
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                             </svg>
-                            <span>Download All (PDF)</span>
+                            <span>Download PDF</span>
                         </button>
                     )}
                     {entries.length > 0 && onClear && (
@@ -236,8 +469,8 @@ const ResponsesView: React.FC<ResponsesViewProps> = ({ entries, user, onEdit, on
                                 key={qId}
                                 onClick={() => setFilterQuarter(filterQuarter === qId ? 'all' : qId)}
                                 className={`p-5 rounded-2xl border-2 cursor-pointer transition-all ${total && isActive
-                                        ? 'bg-blue-50 border-blue-200 hover:border-blue-400'
-                                        : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+                                    ? 'bg-blue-50 border-blue-200 hover:border-blue-400'
+                                    : 'bg-slate-50 border-slate-200 hover:border-slate-300'
                                     }`}
                             >
                                 <p className="text-xs font-bold text-slate-500 uppercase">{getQuarterName(qId)}</p>
@@ -330,9 +563,9 @@ const ResponsesView: React.FC<ResponsesViewProps> = ({ entries, user, onEdit, on
                                                         <td className="px-5 py-4">
                                                             <div className="flex items-center justify-center space-x-1">
                                                                 <button
-                                                                    onClick={() => onEdit(entry)}
-                                                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                                    title="Edit"
+                                                                    onClick={() => handleEditClick(entry)}
+                                                                    className={`p-2 ${isEmployee ? 'text-amber-600 hover:bg-amber-50' : 'text-blue-600 hover:bg-blue-50'} rounded-lg transition-colors`}
+                                                                    title={isEmployee ? 'Request Edit' : 'Edit'}
                                                                 >
                                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />

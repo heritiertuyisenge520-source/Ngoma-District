@@ -1,15 +1,25 @@
-
 import React, { useState, useMemo, useRef } from 'react';
-import { PILLARS, QUARTERS } from '../data';
+import { PILLARS, QUARTERS, Indicator } from '../data';
 import { MonitoringEntry } from '../types';
-import { calculateQuarterProgress, calculateAnnualProgress } from '../utils/progressUtils';
+import { calculateQuarterProgress, calculateAnnualProgress, getIndicatorUnit } from '../utils/progressUtils';
 import jsPDF from 'jspdf';
 
 interface AnalyticsViewProps {
   entries: MonitoringEntry[];
+  userType?: 'super_admin' | 'head' | 'employee';
 }
 
-const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries }) => {
+const indicatorNumbering = new Map<string, number>();
+let indicatorCounter = 1;
+PILLARS.forEach(pillar => {
+  pillar.outputs.forEach(output => {
+    output.indicators.forEach(indicator => {
+      indicatorNumbering.set(indicator.id, indicatorCounter++);
+    });
+  });
+});
+
+const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
   const [selectedPillarId, setSelectedPillarId] = useState<string>(PILLARS[0].id);
   const [selectedIndicatorId, setSelectedIndicatorId] = useState<string>('');
   const [selectedQuarterId, setSelectedQuarterId] = useState<string>(QUARTERS[0].id);
@@ -17,9 +27,94 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries }) => {
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
 
+  const isAdmin = userType === 'super_admin';
+
+  // Download all submissions as CSV
+  const handleDownloadCSV = () => {
+    if (entries.length === 0) {
+      alert('No submissions to download');
+      return;
+    }
+
+    const headers = ['#', 'Pillar', 'Indicator', 'Quarter', 'Month', 'Value', 'Submitted By', 'Date', 'Comments'];
+    const csvContent = [
+      headers.join(','),
+      ...entries.map((entry, idx) => {
+        const pillar = PILLARS.find(p => p.name === entry.pillarId || p.id === entry.pillarId || p.name === entry.pillarName);
+        const indicator = pillar?.outputs?.flatMap(output => output.indicators || []).find(i => i.id === entry.indicatorId);
+        const indicatorNum = indicatorNumbering.get(entry.indicatorId) || 0;
+        const quarter = QUARTERS.find(q => q.id === entry.quarterId);
+
+        return [
+          idx + 1,
+          `"${entry.pillarName || entry.pillarId || ''}"`,
+          `"${indicatorNum}. ${indicator?.name || entry.indicatorName || ''}"`,
+          quarter?.name || entry.quarterId,
+          entry.month,
+          entry.value,
+          `"${(entry as any).submittedBy || 'Unknown'}"`,
+          new Date(entry.timestamp).toLocaleDateString(),
+          `"${(entry.comments || '').replace(/"/g, '""')}"`
+        ].join(',');
+      })
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `All_Submissions_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Group entries by indicator for efficiency
+  const entriesByIndicator = useMemo(() => {
+    const grouped: Record<string, MonitoringEntry[]> = {};
+    entries.forEach(e => {
+      if (!grouped[e.indicatorId]) grouped[e.indicatorId] = [];
+      grouped[e.indicatorId].push(e);
+    });
+    return grouped;
+  }, [entries]);
+
+  const selectedQuarter = useMemo(() => QUARTERS.find(q => q.id === selectedQuarterId), [selectedQuarterId]);
   const selectedPillar = useMemo(() => PILLARS.find(p => p.id === selectedPillarId), [selectedPillarId]);
-  const availableIndicators = useMemo(() => 
-    selectedPillar?.outputs?.flatMap(output => output.indicators || []) || [], 
+
+  // Pillar level stats
+  const pillarStats = useMemo(() => {
+    return PILLARS.map(pillar => {
+      const pillarIndicators = pillar.outputs.flatMap(o => o.indicators || []);
+      if (pillarIndicators.length === 0) return { ...pillar, q: 0, a: 0 };
+
+      let totalQuarterPerf = 0;
+      let totalAnnualPerf = 0;
+
+      pillarIndicators.forEach(indicator => {
+        const indicatorEntries = entriesByIndicator[indicator.id] || [];
+        const qResult = calculateQuarterProgress({
+          indicator,
+          entries: indicatorEntries,
+          quarterId: selectedQuarter?.id || 'q1',
+          monthsInQuarter: selectedQuarter?.months || []
+        });
+        const aPerf = calculateAnnualProgress(indicator, indicatorEntries);
+        totalQuarterPerf += qResult.performance;
+        totalAnnualPerf += aPerf;
+      });
+
+      return {
+        ...pillar,
+        q: totalQuarterPerf / pillarIndicators.length,
+        a: totalAnnualPerf / pillarIndicators.length
+      };
+    });
+  }, [entriesByIndicator, selectedQuarter]);
+
+  const availableIndicators = useMemo(() =>
+    selectedPillar?.outputs?.flatMap(output => output.indicators || []) || [],
     [selectedPillar]
   );
 
@@ -30,7 +125,6 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries }) => {
   }, [availableIndicators, selectedIndicatorId]);
 
   const selectedIndicator = useMemo(() => availableIndicators.find(i => i.id === selectedIndicatorId), [availableIndicators, selectedIndicatorId]);
-  const selectedQuarter = useMemo(() => QUARTERS.find(q => q.id === selectedQuarterId), [selectedQuarterId]);
 
   const getPerformanceColor = (percentage: number) => {
     if (percentage < 50) return 'rose';
@@ -48,25 +142,36 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries }) => {
   };
 
   const getMonthlyValue = (monthName: string) => {
-    const monthEntries = entries.filter(e => e.indicatorId === selectedIndicatorId && e.month === monthName);
+    const indicatorEntries = entriesByIndicator[selectedIndicatorId] || [];
+    const monthEntries = indicatorEntries.filter(e => e.month === monthName);
+
+    if (selectedIndicator?.subIndicatorIds) {
+      return monthEntries.reduce((acc, curr) => {
+        if (curr.subValues) {
+          return acc + (Object.values(curr.subValues) as number[]).reduce((a: number, b: number) => a + b, 0);
+        }
+        return acc;
+      }, 0);
+    }
+
     return monthEntries.reduce((acc, curr) => acc + curr.value, 0);
   };
 
   const latestSubmission = useMemo(() => {
-    const indicatorEntries = entries.filter(e => e.indicatorId === selectedIndicatorId);
+    const indicatorEntries = entriesByIndicator[selectedIndicatorId] || [];
     if (indicatorEntries.length === 0) return null;
     const sorted = [...indicatorEntries].sort((a, b) =>
       new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
     return sorted[0];
-  }, [entries, selectedIndicatorId]);
+  }, [entriesByIndicator, selectedIndicatorId]);
 
   const quarterStats = useMemo(() => {
     if (!selectedIndicator || !selectedQuarter) return null;
 
     const result = calculateQuarterProgress({
       indicator: selectedIndicator,
-      entries: entries.filter(e => e.indicatorId === selectedIndicator.id),
+      entries: entriesByIndicator[selectedIndicator.id] || [],
       quarterId: selectedQuarter.id,
       monthsInQuarter: selectedQuarter.months
     });
@@ -83,14 +188,155 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries }) => {
       months: selectedQuarter.months,
       subIndicatorDetails: result.subIndicatorDetails
     };
-  }, [selectedIndicator, selectedQuarter, entries]);
+  }, [selectedIndicator, selectedQuarter, entriesByIndicator]);
 
   const annualCompletion = useMemo(() => {
     if (!selectedIndicator) return 0;
-    return calculateAnnualProgress(selectedIndicator, entries);
-  }, [selectedIndicator, entries]);
+    return calculateAnnualProgress(selectedIndicator, entriesByIndicator[selectedIndicator.id] || []);
+  }, [selectedIndicator, entriesByIndicator]);
 
   const qColor = quarterStats ? getPerformanceColor(quarterStats.performance) : 'blue';
+
+  // Download entire dashboard as PDF
+  const handleDownloadDashboardPDF = async () => {
+    setIsGeneratingReport(true);
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      // Header
+      pdf.setFillColor(15, 23, 42);
+      pdf.rect(0, 0, pageWidth, 50, 'F');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(24);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Dashboard Report', pageWidth / 2, 22, { align: 'center' });
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`${selectedQuarter?.name || 'Quarter'} Performance Summary`, pageWidth / 2, 34, { align: 'center' });
+      pdf.setFontSize(10);
+      pdf.text(`Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, pageWidth / 2, 44, { align: 'center' });
+
+      let yPos = 60;
+
+      // Summary Stats
+      pdf.setTextColor(30, 41, 59);
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Overall Performance', 15, yPos);
+      yPos += 8;
+
+      const overallQuarter = pillarStats.reduce((acc, p) => acc + Math.min(p.q, 100), 0) / pillarStats.length;
+      const overallAnnual = pillarStats.reduce((acc, p) => acc + Math.min(p.a, 100), 0) / pillarStats.length;
+
+      pdf.setFillColor(248, 250, 252);
+      pdf.roundedRect(15, yPos, pageWidth - 30, 25, 3, 3, 'F');
+      pdf.setFontSize(10);
+      pdf.setTextColor(100, 116, 139);
+      pdf.text('Quarter Progress', 25, yPos + 10);
+      pdf.text('Annual Progress', 100, yPos + 10);
+      pdf.setFontSize(18);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(overallQuarter >= 80 ? 16 : overallQuarter >= 50 ? 245 : 239, overallQuarter >= 80 ? 185 : overallQuarter >= 50 ? 158 : 68, overallQuarter >= 80 ? 129 : overallQuarter >= 50 ? 11 : 68);
+      pdf.text(`${Math.round(overallQuarter)}%`, 25, yPos + 20);
+      pdf.setTextColor(59, 130, 246);
+      pdf.text(`${Math.round(overallAnnual)}%`, 100, yPos + 20);
+
+      yPos += 35;
+
+      // Pillar Details
+      pdf.setTextColor(30, 41, 59);
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Pillar Performance', 15, yPos);
+      yPos += 8;
+
+      pillarStats.forEach((pillar, idx) => {
+        if (yPos > pageHeight - 40) {
+          pdf.addPage();
+          yPos = 20;
+        }
+
+        const q = Math.min(pillar.q, 100);
+        const a = Math.min(pillar.a, 100);
+
+        pdf.setFillColor(idx % 2 === 0 ? 248 : 255, idx % 2 === 0 ? 250 : 255, idx % 2 === 0 ? 252 : 255);
+        pdf.roundedRect(15, yPos, pageWidth - 30, 18, 2, 2, 'F');
+
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(30, 41, 59);
+        pdf.text(`${idx + 1}. ${pillar.name}`, 20, yPos + 11);
+
+        pdf.setFontSize(11);
+        pdf.setTextColor(q >= 80 ? 16 : q >= 50 ? 245 : 239, q >= 80 ? 185 : q >= 50 ? 158 : 68, q >= 80 ? 129 : q >= 50 ? 11 : 68);
+        pdf.text(`Q: ${Math.round(q)}%`, pageWidth - 60, yPos + 11);
+
+        pdf.setTextColor(59, 130, 246);
+        pdf.text(`A: ${Math.round(a)}%`, pageWidth - 35, yPos + 11);
+
+        yPos += 20;
+      });
+
+      // Add new page for selected indicator details if available
+      if (selectedIndicator && quarterStats) {
+        pdf.addPage();
+        yPos = 20;
+
+        pdf.setTextColor(30, 41, 59);
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Selected Indicator Details', 15, yPos);
+        yPos += 10;
+
+        pdf.setFillColor(248, 250, 252);
+        pdf.roundedRect(15, yPos, pageWidth - 30, 35, 3, 3, 'F');
+
+        pdf.setFontSize(9);
+        pdf.setTextColor(100, 116, 139);
+        pdf.text('Indicator', 20, yPos + 10);
+        pdf.setTextColor(30, 41, 59);
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(selectedIndicator.name, 20, yPos + 20);
+
+        pdf.setFontSize(9);
+        pdf.setTextColor(100, 116, 139);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text('Performance', 20, yPos + 28);
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(59, 130, 246);
+        pdf.text(`${Math.round(Math.min(quarterStats.performance, 100))}%`, 55, yPos + 28);
+
+        yPos += 45;
+
+        // Monthly breakdown
+        pdf.setTextColor(30, 41, 59);
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Monthly Values', 15, yPos);
+        yPos += 8;
+
+        quarterStats.months.forEach((month, idx) => {
+          pdf.setFontSize(10);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(100, 116, 139);
+          pdf.text(`${month}:`, 20, yPos);
+          pdf.setTextColor(30, 41, 59);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text(`${quarterStats.monthlyValues[idx]?.toLocaleString() || 0}`, 50, yPos);
+          yPos += 8;
+        });
+      }
+
+      pdf.save(`Dashboard_Report_${selectedQuarter?.name || 'Q'}_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error('Error generating dashboard PDF:', error);
+    }
+    setIsGeneratingReport(false);
+  };
 
   const handleDownloadReport = async () => {
     setIsGeneratingReport(true);
@@ -244,65 +490,171 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries }) => {
   const inputClasses = "w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-medium shadow-sm hover:border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 outline-none appearance-none cursor-pointer";
 
   return (
-    <div ref={reportRef} className="space-y-6 animate-in fade-in duration-500 pb-16">
-      {/* Clean Header */}
-      <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 pb-5 border-b border-slate-100">
-        <div className="flex items-center gap-4">
-          <div className="w-11 h-11 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-xl flex items-center justify-center shadow-md">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
+    <div ref={reportRef} className="space-y-8">
+      {/* Part 1: Pillar Progress Overview (Pie Charts) */}
+      <div className="bg-white rounded-3xl shadow-lg border border-slate-100 overflow-hidden">
+        <div className="p-8 border-b border-slate-100 bg-slate-50">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-800">Pillar Progress</h2>
+              <p className="text-sm text-slate-500">Quarter-based progress updates instantly from the dropdown.</p>
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <button
+                onClick={handleDownloadDashboardPDF}
+                disabled={isGeneratingReport}
+                className="h-11 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-sm flex items-center gap-2 transition-colors disabled:opacity-50"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <span>{isGeneratingReport ? 'Generating...' : 'Download PDF'}</span>
+              </button>
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Quarter</span>
+              <select
+                value={selectedQuarterId}
+                onChange={(e) => setSelectedQuarterId(e.target.value)}
+                className="h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 outline-none appearance-none cursor-pointer"
+              >
+                {QUARTERS.map(q => <option key={q.id} value={q.id}>{q.name}</option>)}
+              </select>
+            </div>
           </div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Progress</h1>
         </div>
 
-        <button
-          onClick={handleDownloadReport}
-          disabled={isGeneratingReport || !quarterStats}
-          className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium rounded-xl shadow-sm hover:shadow transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isGeneratingReport ? (
-            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-          ) : (
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          )}
-          <span>Download Report</span>
-        </button>
-      </header>
+        <div className="p-8 space-y-6">
+          {pillarStats.map((pillar, index) => {
+            const qColor = getPerformanceColor(pillar.q);
+            const aColor = getPerformanceColor(pillar.a);
+
+            return (
+              <div
+                key={pillar.id}
+                className="bg-slate-50 rounded-3xl p-6 md:p-8 border border-slate-100 shadow-sm animate-in slide-in-from-left"
+                style={{ animationDelay: `${index * 120}ms`, animationFillMode: 'both' }}
+              >
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white flex items-center justify-center font-bold">
+                        {index + 1}
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-slate-800">{pillar.name}</h3>
+                        <p className="text-sm text-slate-500">Quarter: {selectedQuarter?.name}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-6 w-full justify-center lg:justify-end">
+                    {/* Quarter Pie */}
+                    <div className="text-center">
+                      <div className="relative w-24 h-24 mx-auto">
+                        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                          <circle cx="50" cy="50" r="40" fill="none" stroke="#e2e8f0" strokeWidth="8" />
+                          <circle
+                            cx="50" cy="50" r="40" fill="none"
+                            stroke={getHexForColor(qColor)}
+                            strokeWidth="8"
+                            strokeLinecap="round"
+                            strokeDasharray="251"
+                            strokeDashoffset={251 - (251 * Math.min(pillar.q, 100)) / 100}
+                            className="transition-all duration-1000 ease-out"
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-lg font-black text-slate-800">{Math.round(Math.min(pillar.q, 100))}%</span>
+                        </div>
+                      </div>
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mt-2">Quarter</p>
+                    </div>
+
+                    {/* Annual Pie */}
+                    <div className="text-center">
+                      <div className="relative w-24 h-24 mx-auto">
+                        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                          <circle cx="50" cy="50" r="40" fill="none" stroke="#e2e8f0" strokeWidth="8" />
+                          <circle
+                            cx="50" cy="50" r="40" fill="none"
+                            stroke={getHexForColor(aColor)}
+                            strokeWidth="8"
+                            strokeLinecap="round"
+                            strokeDasharray="251"
+                            strokeDashoffset={251 - (251 * Math.min(pillar.a, 100)) / 100}
+                            className="transition-all duration-1000 ease-out"
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-lg font-black text-slate-800">{Math.round(Math.min(pillar.a, 100))}%</span>
+                        </div>
+                      </div>
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mt-2">Annual</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <div className="flex justify-between items-center text-sm font-semibold text-slate-600 mb-2">
+                      <span>Quarter Progress</span>
+                      <span style={{ color: getHexForColor(qColor) }}>{Math.round(Math.min(pillar.q, 100))}%</span>
+                    </div>
+                    <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-1000"
+                        style={{ width: `${Math.min(pillar.q, 100)}%`, backgroundColor: getHexForColor(qColor) }}
+                      ></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between items-center text-sm font-semibold text-slate-600 mb-2">
+                      <span>Annual Progress</span>
+                      <span style={{ color: getHexForColor(aColor) }}>{Math.round(Math.min(pillar.a, 100))}%</span>
+                    </div>
+                    <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-1000"
+                        style={{ width: `${Math.min(pillar.a, 100)}%`, backgroundColor: getHexForColor(aColor) }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+
 
       {/* Filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-5 bg-white rounded-2xl border border-slate-100 shadow-sm">
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block">Pillar</label>
-          <select value={selectedPillarId} onChange={(e) => setSelectedPillarId(e.target.value)} className={inputClasses}>
-            {PILLARS.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block">Indicator</label>
-          <select value={selectedIndicatorId} onChange={(e) => setSelectedIndicatorId(e.target.value)} className={inputClasses} disabled={availableIndicators.length === 0}>
-            {availableIndicators.length === 0 ? (
-              <option value="">-- No indicators available --</option>
-            ) : (
-              availableIndicators.map(i => <option key={i.id} value={i.id}>{i.name}</option>)
-            )}
-          </select>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 p-5 bg-white rounded-2xl border border-slate-100 shadow-sm">
         <div className="space-y-1.5">
           <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block">Quarter</label>
           <select value={selectedQuarterId} onChange={(e) => setSelectedQuarterId(e.target.value)} className={inputClasses}>
             {QUARTERS.map(q => <option key={q.id} value={q.id}>{q.name}</option>)}
           </select>
         </div>
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block">Pillar</label>
+          <select value={selectedPillarId} onChange={(e) => setSelectedPillarId(e.target.value)} className={inputClasses}>
+            {PILLARS.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        </div>
+        <div className="space-y-1.5 sm:col-span-2">
+
+          <select value={selectedIndicatorId} onChange={(e) => setSelectedIndicatorId(e.target.value)} className={inputClasses} disabled={availableIndicators.length === 0}>
+            {availableIndicators.length === 0 ? (
+              <option value="">-- No indicators available --</option>
+            ) : (
+              availableIndicators.map(i => <option key={i.id} value={i.id}>{indicatorNumbering.get(i.id)}. {i.name} {getIndicatorUnit(i as Indicator)}</option>)
+            )}
+          </select>
+        </div>
       </div>
 
       {quarterStats && selectedIndicator && (
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+        <div className="grid grid-cols-1 gap-5">
 
           {/* Monthly Progress Chart - Dark Professional Design */}
           <div className="xl:col-span-8 relative overflow-hidden rounded-2xl shadow-xl">
@@ -325,7 +677,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries }) => {
                   <h3 className="text-xl font-bold text-white">{selectedQuarter?.name}</h3>
                 </div>
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-lg border border-white/10">
-                  <span className={`w-2 h-2 rounded-full bg-emerald-400 animate-pulse`}></span>
+                  <span className={`w-2 h-2 rounded-full bg-emerald-400`}></span>
                   <span className="text-[11px] text-white/80 font-semibold uppercase tracking-wide">Live</span>
                 </div>
               </div>
@@ -456,7 +808,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries }) => {
           </div>
 
           {/* Quarterly Progress */}
-          <div className="xl:col-span-4 bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-5">Quarterly Progress</p>
 
             <div className="flex flex-col items-center">
@@ -523,7 +875,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries }) => {
 
           {/* Submission Info - Clean & Professional */}
           {latestSubmission && (
-            <div className="xl:col-span-12 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
               <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6 p-5">
                 {/* Submitter */}
                 <div className="flex items-center gap-3 md:pr-6 md:border-r md:border-slate-100">

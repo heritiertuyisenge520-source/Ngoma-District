@@ -1,8 +1,8 @@
 
 import React, { useState, useMemo } from 'react';
-import { PILLARS, QUARTERS, INDICATORS } from '../data';
-import { MonitoringEntry, Indicator } from '../types';
-import { calculateQuarterProgress, calculateMonthlyProgress, parseValue } from '../utils/progressUtils';
+import { PILLARS, QUARTERS, INDICATORS, Indicator } from '../data';
+import { MonitoringEntry } from '../types';
+import { calculateQuarterProgress, calculateMonthlyProgress, parseValue, getIndicatorUnit } from '../utils/progressUtils';
 
 interface ProgressCalculatorViewProps {
     entries: MonitoringEntry[];
@@ -13,8 +13,11 @@ const ProgressCalculatorView: React.FC<ProgressCalculatorViewProps> = ({ entries
     const [indicatorId, setIndicatorId] = useState('');
     const [timelineId, setTimelineId] = useState('q1');
 
-    const selectedPillar = useMemo(() => PILLARS.find(p => p.name === pillarId), [pillarId]);
-    const indicators = useMemo(() => selectedPillar?.indicators || [], [selectedPillar]);
+    const selectedPillar = useMemo(() => PILLARS.find(p => p.id === pillarId), [pillarId]);
+    const indicators = useMemo(() =>
+        selectedPillar?.outputs?.flatMap(output => output.indicators || []) || [],
+        [selectedPillar]
+    );
     const selectedIndicator = useMemo(() => indicators.find(i => i.id === indicatorId), [indicators, indicatorId]);
 
     const isAnnual = timelineId === 'annual';
@@ -107,7 +110,7 @@ const ProgressCalculatorView: React.FC<ProgressCalculatorViewProps> = ({ entries
                 name: subInd.name,
                 actual: subActual,
                 target: subTarget,
-                performance: Math.min(performance, 999)
+                performance: Math.min(performance, 100)
             };
         });
     }, [subIndicators, indicatorEntries, timelineId, isAnnual, selectedIndicator, hasSubIndicators]);
@@ -209,7 +212,7 @@ const ProgressCalculatorView: React.FC<ProgressCalculatorViewProps> = ({ entries
                                 className={inputClasses}
                             >
                                 <option value="">-- Select Pillar --</option>
-                                {PILLARS.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
+                                {PILLARS.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                             </select>
                         </div>
 
@@ -222,7 +225,7 @@ const ProgressCalculatorView: React.FC<ProgressCalculatorViewProps> = ({ entries
                                 className={inputClasses}
                             >
                                 <option value="">-- Select Indicator --</option>
-                                {indicators.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+                                {indicators.map(i => <option key={i.id} value={i.id}>{i.name} {getIndicatorUnit(i)}</option>)}
                             </select>
                         </div>
 
@@ -267,16 +270,20 @@ const ProgressCalculatorView: React.FC<ProgressCalculatorViewProps> = ({ entries
                             {/* Main Indicator Card */}
                             <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
                                 <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-                                    <h3 className="font-black text-slate-900 text-sm tracking-tight">{selectedIndicator.name}</h3>
-                                    <div className="flex items-center space-x-2 mt-1">
-                                        <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-100 text-blue-600 rounded uppercase tracking-tighter">
-                                            Type: {selectedIndicator.measurementType || 'Cumulative'}
-                                        </span>
-                                        {hasSubIndicators && (
-                                            <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-600 rounded uppercase tracking-tighter">
-                                                Composite ({subIndicators.length} sub-indicators)
-                                            </span>
-                                        )}
+                                    <div className="flex items-start justify-between">
+                                        <div>
+                                            <h3 className="font-black text-slate-900 text-sm tracking-tight">{selectedIndicator.name}</h3>
+                                            <div className="flex items-center flex-wrap gap-2 mt-2">
+                                                <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-100 text-blue-600 rounded uppercase tracking-tighter">
+                                                    Type: {selectedIndicator.measurementType || 'Cumulative'}
+                                                </span>
+                                                {hasSubIndicators && (
+                                                    <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-600 rounded uppercase tracking-tighter">
+                                                        Composite ({subIndicators.length} sub-indicators)
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 

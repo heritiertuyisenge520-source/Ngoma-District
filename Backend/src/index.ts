@@ -3,10 +3,12 @@ import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import connectDB from './db';
+import { ensureAdminExists } from './utils/adminInit';
 import authRoutes from './routes/authRoutes';
 import analyticsRoutes from './routes/analyticsRoutes';
 import submissionsRoutes from './routes/submissionsRoutes';
 import dataRoutes from './routes/dataRoutes';
+import uploadRoutes from './routes/uploadRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -21,6 +23,7 @@ app.use((req, res, next) => {
     const origin = req.headers.origin;
     const allowedOrigins = [
         'http://localhost:3000',
+        'http://localhost:3001',
         'http://localhost:5173',
         'https://full-system-three.vercel.app'
     ];
@@ -41,7 +44,7 @@ app.use((req, res, next) => {
 
 // CORS middleware as backup
 app.use(cors({
-    origin: ['http://localhost:3000', 'http://localhost:5173', 'https://full-system-three.vercel.app'],
+    origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173', 'https://full-system-three.vercel.app'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
@@ -62,6 +65,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/submissions', submissionsRoutes);
 app.use('/api', dataRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -72,6 +76,10 @@ app.get('/health', (req, res) => {
 const startServer = async () => {
     try {
         await connectDB();
+
+        // Initialize admin account if it doesn't exist
+        await ensureAdminExists();
+
         app.listen(PORT, () => {
             console.log(`Server is running on port ${PORT}`);
         });

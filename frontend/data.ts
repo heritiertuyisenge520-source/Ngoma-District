@@ -160,10 +160,22 @@ export const INDICATORS: Indicator[] = [
     },
     "isDual": true,
     "subIndicatorIds": {
+      "dap": "10a",
       "urea": "11",
       "npk": "12",
       "blender": "13",
       "lime": "14"
+    }
+  },
+  {
+    "id": "10a",
+    "name": "Quantity of DAP used (Kg)",
+    "targets": {
+      "q1": 85000,
+      "q2": 95000,
+      "q3": 120000,
+      "q4": 50000,
+      "annual": 350000
     }
   },
   {
@@ -341,10 +353,22 @@ export const INDICATORS: Indicator[] = [
     },
     "isDual": true,
     "subIndicatorIds": {
+      "bq": "24a",
       "lsd": "25",
       "rvf": "26",
       "brucellosis": "27",
       "rabies": "28"
+    }
+  },
+  {
+    "id": "24a",
+    "name": "Number of cows vaccinated against Black quarter (BQ)",
+    "targets": {
+      "q1": 0,
+      "q2": 34000,
+      "q3": 0,
+      "q4": 0,
+      "annual": 34000
     }
   },
   {

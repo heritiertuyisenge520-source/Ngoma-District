@@ -1,7 +1,18 @@
 
 import React, { useState, useMemo } from 'react';
-import { PILLARS, INDICATORS } from '../data';
-import { Indicator } from '../types';
+import { PILLARS, INDICATORS, Indicator } from '../data';
+import { getIndicatorUnit } from '../utils/progressUtils';
+
+// Global indicator numbering (1-126)
+const indicatorNumbering = new Map<string, number>();
+let indicatorCounter = 1;
+PILLARS.forEach(pillar => {
+  pillar.outputs.forEach(output => {
+    output.indicators.forEach(indicator => {
+      indicatorNumbering.set(indicator.id, indicatorCounter++);
+    });
+  });
+});
 
 const TargetView: React.FC = () => {
   const [pillarId, setPillarId] = useState('');
@@ -99,10 +110,10 @@ const TargetView: React.FC = () => {
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-start gap-4">
                         <div className="w-10 h-10 bg-gradient-to-br from-violet-100 to-purple-100 rounded-xl flex items-center justify-center text-violet-600 font-bold text-sm shrink-0">
-                          {index + 1}
+                          {indicatorNumbering.get(indicator.id) || index + 1}
                         </div>
                         <div>
-                          <h3 className="text-sm font-semibold text-slate-800 leading-relaxed">{indicator.name}</h3>
+                          <h3 className="text-sm font-semibold text-slate-800 leading-relaxed">{indicator.name} <span className="text-blue-600">{getIndicatorUnit(indicator)}</span></h3>
                           {hasSubIndicators && (
                             <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
                               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -136,8 +147,8 @@ const TargetView: React.FC = () => {
                           <div
                             key={item.label}
                             className={`p-3 rounded-xl text-center transition-all duration-300 hover:scale-105 ${item.color === 'violet'
-                                ? 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-md shadow-violet-500/20'
-                                : 'bg-slate-50 hover:bg-slate-100'
+                              ? 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-md shadow-violet-500/20'
+                              : 'bg-slate-50 hover:bg-slate-100'
                               }`}
                             style={{ animationDelay: `${i * 50}ms` }}
                           >
@@ -181,8 +192,8 @@ const TargetView: React.FC = () => {
                                 <div
                                   key={item.label}
                                   className={`p-2.5 rounded-lg text-center transition-all duration-200 hover:scale-105 ${item.isAnnual
-                                      ? 'bg-violet-50 border border-violet-200'
-                                      : 'bg-slate-50'
+                                    ? 'bg-violet-50 border border-violet-200'
+                                    : 'bg-slate-50'
                                     }`}
                                 >
                                   <p className={`text-[9px] font-bold uppercase tracking-wide mb-0.5 ${item.isAnnual ? 'text-violet-500' : 'text-slate-400'}`}>

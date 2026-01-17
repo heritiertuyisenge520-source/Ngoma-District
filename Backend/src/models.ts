@@ -32,6 +32,23 @@ export interface IMonitoringEntry extends Document {
     deletedAt?: Date;
 }
 
+// Unit definitions for classification
+export const UNITS = [
+    'Agriculture And Natural Resource Unit',
+    'Business Development And Employment Unit',
+    'Infrastructure One Stop Center',
+    'Social Development Unit',
+    'Health Unit',
+    'Education Unit',
+    'Good Governance Unit',
+    'Planning, Monitoring and Evaluation Unit',
+    'HR and Administration Unit',
+    'Finance Unit',
+    'Internal Audit'
+] as const;
+
+export type UnitType = typeof UNITS[number];
+
 // User Interface
 export interface IUser extends Document {
     email: string;
@@ -42,6 +59,28 @@ export interface IUser extends Document {
     lastName?: string;
     lastLogin?: Date;
     isActive?: boolean;
+    // New fields for approval workflow
+    isApproved?: boolean;
+    approvedAt?: Date;
+    approvedBy?: string;
+    unit?: string; // Unit assignment (e.g., "Agriculture And Natural Resource Unit")
+    userType?: 'super_admin' | 'head' | 'employee'; // Role type within the system
+}
+
+// Indicator Assignment Interface
+export interface IIndicatorAssignment extends Document {
+    userId: string;
+    userEmail: string;
+    userName: string;
+    pillarId: string;
+    pillarName: string;
+    indicatorId: string;
+    indicatorName: string;
+    assignedBy: string;
+    assignedByEmail: string;
+    unit: string;
+    assignedAt: Date;
+    isActive: boolean;
 }
 
 // Audit Log Interface
@@ -135,9 +174,18 @@ const UserSchema = new Schema({
     lastName: { type: String },
     lastLogin: { type: Date },
     isActive: { type: Boolean, default: true },
+    // Approval workflow fields
+    isApproved: { type: Boolean, default: false },
+    approvedAt: { type: Date },
+    approvedBy: { type: String },
+    unit: { type: String }, // Unit assignment
+    userType: { type: String, enum: ['super_admin', 'head', 'employee'], default: 'employee' },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now }
 });
+
+// Add index for querying pending users
+UserSchema.index({ isApproved: 1 });
 
 // Add pre-save hook to update the updatedAt field
 UserSchema.pre('save', function (next) {
@@ -171,9 +219,128 @@ const SubmissionSchema = new Schema({
     targetValue: { type: Number },
     subValues: { type: Schema.Types.Mixed }, // For dual indicators
     comments: { type: String },
+    supportingDocuments: [{
+        url: { type: String },
+        publicId: { type: String },
+        format: { type: String },
+        originalName: { type: String },
+        uploadedAt: { type: Date, default: Date.now }
+    }],
     submittedBy: { type: String },
     timestamp: { type: Date, default: Date.now }
 });
 
 export const SubmissionModel = mongoose.model('Submission', SubmissionSchema, 'Submissions');
 
+// Indicator Assignment Schema - for tracking which indicators are assigned to which users
+const IndicatorAssignmentSchema = new Schema({
+    userId: { type: String, required: true },
+    userEmail: { type: String, required: true },
+    userName: { type: String, required: true },
+    pillarId: { type: String, required: true },
+    pillarName: { type: String, required: true },
+    indicatorId: { type: String, required: true },
+    indicatorName: { type: String, required: true },
+    assignedBy: { type: String, required: true }, // User ID of assigner
+    assignedByEmail: { type: String, required: true },
+    unit: { type: String, required: true },
+    assignedAt: { type: Date, default: Date.now },
+    isActive: { type: Boolean, default: true }
+});
+
+// Indexes for efficient queries
+IndicatorAssignmentSchema.index({ userId: 1, isActive: 1 });
+IndicatorAssignmentSchema.index({ userEmail: 1 });
+IndicatorAssignmentSchema.index({ indicatorId: 1 });
+IndicatorAssignmentSchema.index({ unit: 1 });
+
+export const IndicatorAssignmentModel = mongoose.model<IIndicatorAssignment>('IndicatorAssignment', IndicatorAssignmentSchema, 'IndicatorAssignments');
+
+// Data Change Request Interface - for employee edit approval workflow
+export interface IDataChangeRequest extends Document {
+    submissionId: string;
+    requestedBy: string; // email of the employee
+    requestedByName: string;
+    indicatorId: string;
+    indicatorName: string;
+    pillarName: string;
+    quarterId: string;
+    month: string;
+    oldValue: number;
+    newValue: number;
+    oldSubValues?: Record<string, number>;
+    newSubValues?: Record<string, number>;
+    oldComments?: string;
+    newComments?: string;
+    status: 'pending' | 'approved' | 'rejected';
+    reviewedBy?: string;
+    reviewedByName?: string;
+    reviewedAt?: Date;
+    reviewComment?: string;
+    createdAt: Date;
+    unit: string;
+}
+
+// Data Change Request Schema
+const DataChangeRequestSchema = new Schema({
+    submissionId: { type: String, required: true },
+    requestedBy: { type: String, required: true },
+    requestedByName: { type: String, required: true },
+    indicatorId: { type: String, required: true },
+    indicatorName: { type: String, required: true },
+    pillarName: { type: String, required: true },
+    quarterId: { type: String, required: true },
+    month: { type: String, required: true },
+    oldValue: { type: Number, required: true },
+    newValue: { type: Number, required: true },
+    oldSubValues: { type: Schema.Types.Mixed },
+    newSubValues: { type: Schema.Types.Mixed },
+    oldComments: { type: String },
+    newComments: { type: String },
+    status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+    reviewedBy: { type: String },
+    reviewedByName: { type: String },
+    reviewedAt: { type: Date },
+    reviewComment: { type: String },
+    createdAt: { type: Date, default: Date.now },
+    unit: { type: String, required: true }
+});
+
+// Indexes for efficient queries
+DataChangeRequestSchema.index({ status: 1, unit: 1 });
+DataChangeRequestSchema.index({ requestedBy: 1 });
+DataChangeRequestSchema.index({ submissionId: 1 });
+
+export const DataChangeRequestModel = mongoose.model<IDataChangeRequest>('DataChangeRequest', DataChangeRequestSchema, 'DataChangeRequests');
+
+// Submission Period Interface - for admin to control submission window
+export interface ISubmissionPeriod extends Document {
+    description: string;
+    startDate: Date;
+    endDate: Date;
+    isActive: boolean;
+    createdBy: string;
+    createdByName: string;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+// Submission Period Schema
+const SubmissionPeriodSchema = new Schema({
+    description: { type: String, required: true },
+    startDate: { type: Date, required: true },
+    endDate: { type: Date, required: true },
+    isActive: { type: Boolean, default: true },
+    createdBy: { type: String, required: true },
+    createdByName: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
+});
+
+// Pre-save hook to update the updatedAt field
+SubmissionPeriodSchema.pre('save', function (next) {
+    this.updatedAt = new Date();
+    next();
+});
+
+export const SubmissionPeriodModel = mongoose.model<ISubmissionPeriod>('SubmissionPeriod', SubmissionPeriodSchema, 'SubmissionPeriods');
