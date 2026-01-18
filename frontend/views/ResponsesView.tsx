@@ -478,7 +478,7 @@ const ResponsesView: React.FC<ResponsesViewProps> = ({ entries, user, onEdit, on
                                     {total?.count || 0}
                                 </p>
                                 <p className="text-xs text-slate-500">
-                                    Total: {(total?.totalValue || 0).toLocaleString()}
+                                    Submissions
                                 </p>
                             </div>
                         );
@@ -506,19 +506,11 @@ const ResponsesView: React.FC<ResponsesViewProps> = ({ entries, user, onEdit, on
                         return (
                             <div key={qId} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                                 {/* Quarter Header */}
-                                <div className="bg-slate-800 text-white p-5 flex justify-between items-center">
-                                    <div>
-                                        <h3 className="text-lg font-bold">{getQuarterName(qId)}</h3>
-                                        <p className="text-sm text-slate-300">
-                                            {qEntries.length} submission{qEntries.length !== 1 ? 's' : ''}
-                                        </p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-xs text-slate-400">Total Achievement</p>
-                                        <p className="text-2xl font-bold text-blue-400">
-                                            {quarterTotals[qId]?.totalValue.toLocaleString()}
-                                        </p>
-                                    </div>
+                                <div className="bg-slate-800 text-white p-5">
+                                    <h3 className="text-lg font-bold">{getQuarterName(qId)}</h3>
+                                    <p className="text-sm text-slate-300">
+                                        {qEntries.length} submission{qEntries.length !== 1 ? 's' : ''}
+                                    </p>
                                 </div>
 
                                 {/* Entries Table */}

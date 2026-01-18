@@ -174,6 +174,21 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
     [indicators, indicatorId]
   );
 
+  // Helper function to get sub-indicator target by sub-indicator ID
+  const getSubIndicatorTarget = (subIndicatorId: string): number | string => {
+    if (!quarterId) return 0;
+    // Find the sub-indicator across all pillars
+    for (const pillar of PILLARS) {
+      for (const output of pillar.outputs) {
+        const subInd = output.indicators.find(ind => ind.id === subIndicatorId);
+        if (subInd && subInd.targets) {
+          return subInd.targets[quarterId as keyof typeof subInd.targets] || 0;
+        }
+      }
+    }
+    return 0;
+  };
+
   // Simple quarter and month data
   const QUARTERS = [
     { id: 'q1', name: 'Quarter 1', months: ['July', 'August', 'September'] },
@@ -571,7 +586,10 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                     {indicatorId === '3' && (
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">Maize (Ha)</label>
+                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
+                            <span>Maize (Ha)</span>
+                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('3a')}</span>
+                          </label>
                           <input
                             type="number"
                             value={subValues['maize'] ?? ''}
@@ -582,7 +600,10 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">Cassava (Ha)</label>
+                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
+                            <span>Cassava (Ha)</span>
+                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('4')}</span>
+                          </label>
                           <input
                             type="number"
                             value={subValues['cassava'] ?? ''}
@@ -592,7 +613,10 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">Rice (Ha)</label>
+                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
+                            <span>Rice (Ha)</span>
+                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('5')}</span>
+                          </label>
                           <input
                             type="number"
                             value={subValues['rice'] ?? ''}
@@ -602,7 +626,10 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">Beans (Ha)</label>
+                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
+                            <span>Beans (Ha)</span>
+                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('6')}</span>
+                          </label>
                           <input
                             type="number"
                             value={subValues['beans'] ?? ''}
@@ -612,7 +639,10 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">Soya (Ha)</label>
+                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
+                            <span>Soya (Ha)</span>
+                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('7')}</span>
+                          </label>
                           <input
                             type="number"
                             value={subValues['soya'] ?? ''}
@@ -627,7 +657,10 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                     {indicatorId === '8' && (
                       <div className="grid grid-cols-2 gap-3 md:gap-4">
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">Maize Seeds (Kg)</label>
+                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
+                            <span>Maize Seeds (Kg)</span>
+                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('8a')}</span>
+                          </label>
                           <input
                             type="number"
                             value={subValues['maize'] ?? ''}
@@ -638,7 +671,10 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">Soya Seeds (Kg)</label>
+                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
+                            <span>Soya Seeds (Kg)</span>
+                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('9')}</span>
+                          </label>
                           <input
                             type="number"
                             value={subValues['soya'] ?? ''}
@@ -651,20 +687,39 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                     )}
 
                     {indicatorId === '10' && (
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">UREA (Kg)</label>
+                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
+                            <span>DAP (Kg)</span>
+                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('10a')}</span>
+                          </label>
+                          <input
+                            type="number"
+                            value={subValues['dap'] ?? ''}
+                            onChange={(e) => handleSubValueChange('dap', e.target.value)}
+                            placeholder="DAP"
+                            className={`${inputClasses} placeholder:text-slate-300 placeholder:font-normal`}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
+                            <span>UREA (Kg)</span>
+                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('11')}</span>
+                          </label>
                           <input
                             type="number"
                             value={subValues['urea'] ?? ''}
                             onChange={(e) => handleSubValueChange('urea', e.target.value)}
                             placeholder="UREA"
                             className={`${inputClasses} placeholder:text-slate-300 placeholder:font-normal`}
-                            required
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">NPK (Kg)</label>
+                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
+                            <span>NPK (Kg)</span>
+                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('12')}</span>
+                          </label>
                           <input
                             type="number"
                             value={subValues['npk'] ?? ''}
@@ -674,7 +729,10 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">Blender (Kg)</label>
+                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
+                            <span>Blender (Kg)</span>
+                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('13')}</span>
+                          </label>
                           <input
                             type="number"
                             value={subValues['blender'] ?? ''}
@@ -684,7 +742,10 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">Lime (Kg)</label>
+                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
+                            <span>Lime (Kg)</span>
+                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('14')}</span>
+                          </label>
                           <input
                             type="number"
                             value={subValues['lime'] ?? ''}
@@ -699,7 +760,10 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                     {indicatorId === '16' && (
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">Maize (Ha)</label>
+                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
+                            <span>Maize (Ha)</span>
+                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('16a')}</span>
+                          </label>
                           <input
                             type="number"
                             value={subValues['maize'] ?? ''}
@@ -710,7 +774,10 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">Rice (Ha)</label>
+                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
+                            <span>Rice (Ha)</span>
+                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('17')}</span>
+                          </label>
                           <input
                             type="number"
                             value={subValues['rice'] ?? ''}
@@ -720,7 +787,10 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">Beans (Ha)</label>
+                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
+                            <span>Beans (Ha)</span>
+                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('18')}</span>
+                          </label>
                           <input
                             type="number"
                             value={subValues['beans'] ?? ''}
@@ -730,7 +800,10 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">Chilli (Ha)</label>
+                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
+                            <span>Chilli (Ha)</span>
+                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('19')}</span>
+                          </label>
                           <input
                             type="number"
                             value={subValues['chilli'] ?? ''}
@@ -740,7 +813,10 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">Soybeans (Ha)</label>
+                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
+                            <span>Soybeans (Ha)</span>
+                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('20')}</span>
+                          </label>
                           <input
                             type="number"
                             value={subValues['soybeans'] ?? ''}
@@ -750,7 +826,10 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">French beans (Ha)</label>
+                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
+                            <span>French beans (Ha)</span>
+                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('21')}</span>
+                          </label>
                           <input
                             type="number"
                             value={subValues['french_beans'] ?? ''}
@@ -763,20 +842,39 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                     )}
 
                     {indicatorId === '24' && (
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">LSD</label>
+                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
+                            <span>BQ</span>
+                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('24a')}</span>
+                          </label>
+                          <input
+                            type="number"
+                            value={subValues['bq'] ?? ''}
+                            onChange={(e) => handleSubValueChange('bq', e.target.value)}
+                            placeholder="Black quarter"
+                            className={`${inputClasses} placeholder:text-slate-300 placeholder:font-normal`}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
+                            <span>LSD</span>
+                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('25')}</span>
+                          </label>
                           <input
                             type="number"
                             value={subValues['lsd'] ?? ''}
                             onChange={(e) => handleSubValueChange('lsd', e.target.value)}
                             placeholder="LSD"
                             className={`${inputClasses} placeholder:text-slate-300 placeholder:font-normal`}
-                            required
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">RVF</label>
+                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
+                            <span>RVF</span>
+                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('26')}</span>
+                          </label>
                           <input
                             type="number"
                             value={subValues['rvf'] ?? ''}
@@ -786,7 +884,10 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">Brucellosis</label>
+                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
+                            <span>Brucellosis</span>
+                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('27')}</span>
+                          </label>
                           <input
                             type="number"
                             value={subValues['brucellosis'] ?? ''}
@@ -796,7 +897,10 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">Rabies</label>
+                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
+                            <span>Rabies</span>
+                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('28')}</span>
+                          </label>
                           <input
                             type="number"
                             value={subValues['rabies'] ?? ''}
@@ -811,7 +915,10 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                     {indicatorId === '29' && (
                       <div className="grid grid-cols-2 gap-3 md:gap-4">
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">Goats</label>
+                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
+                            <span>Goats</span>
+                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('30a')}</span>
+                          </label>
                           <input
                             type="number"
                             value={subValues['goats'] ?? ''}
@@ -822,7 +929,10 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">Sheep</label>
+                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
+                            <span>Sheep</span>
+                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('30')}</span>
+                          </label>
                           <input
                             type="number"
                             value={subValues['sheep'] ?? ''}
@@ -837,7 +947,10 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                     {indicatorId === '31' && (
                       <div className="grid grid-cols-2 gap-3 md:gap-4">
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">Pigs Insured</label>
+                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
+                            <span>Pigs Insured</span>
+                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('32')}</span>
+                          </label>
                           <input
                             type="number"
                             value={subValues['pig'] ?? ''}
@@ -848,7 +961,10 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">Chicken Insured</label>
+                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
+                            <span>Chicken Insured</span>
+                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('33')}</span>
+                          </label>
                           <input
                             type="number"
                             value={subValues['chicken'] ?? ''}
@@ -863,7 +979,10 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                     {indicatorId === '87' && (
                       <div className="grid grid-cols-2 gap-3 md:gap-4">
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">15 Classrooms</label>
+                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
+                            <span>15 Classrooms</span>
+                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('87a')}</span>
+                          </label>
                           <input
                             type="number"
                             value={subValues['classrooms'] ?? ''}
@@ -874,7 +993,10 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-blue-700 uppercase">24 Toilets</label>
+                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
+                            <span>24 Toilets</span>
+                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('87b')}</span>
+                          </label>
                           <input
                             type="number"
                             value={subValues['toilets'] ?? ''}

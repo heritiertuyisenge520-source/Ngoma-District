@@ -917,7 +917,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "72%",
       "annual": "72%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "71",
@@ -929,7 +930,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "62%",
       "annual": "62%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "72",
@@ -941,7 +943,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "65%",
       "annual": "65%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "73",
@@ -953,7 +956,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "95%",
       "annual": "95%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "74",
@@ -965,7 +969,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "100%",
       "annual": "100%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "75",
@@ -977,7 +982,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "95%",
       "annual": "95%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "76",
@@ -989,7 +995,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "95%",
       "annual": "95%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "77",
@@ -1001,7 +1008,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "95%",
       "annual": "95%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "78",
@@ -1013,7 +1021,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "95%",
       "annual": "95%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "79",
@@ -1025,7 +1034,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "11%",
       "annual": "11%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "80",
@@ -1037,7 +1047,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "85%",
       "annual": "85%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "81",
@@ -1060,7 +1071,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "80%",
       "annual": "80%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "83",
@@ -1072,7 +1084,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "0",
       "annual": "100%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "84",
@@ -1084,7 +1097,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "85%",
       "annual": "85%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "85",
@@ -1107,7 +1121,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "95%",
       "annual": "95%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "87",
@@ -1119,7 +1134,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "100%",
       "annual": "100%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "88",
@@ -1131,7 +1147,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "100%",
       "annual": "100%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "89",
@@ -1143,7 +1160,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "0",
       "annual": "100%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "90",
@@ -1190,7 +1208,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "100%",
       "annual": "100%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "94",
@@ -1202,7 +1221,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "100%",
       "annual": "100%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "95",
@@ -1236,7 +1256,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "100%",
       "annual": "100%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "98",
@@ -1248,7 +1269,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "100%",
       "annual": "100%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "99",
@@ -1260,7 +1282,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "85%",
       "annual": "100%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "100",
@@ -1272,7 +1295,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "100%",
       "annual": "100%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "101",
@@ -1284,7 +1308,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "98%",
       "annual": "98%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "102",
@@ -1296,7 +1321,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "80%",
       "annual": "80%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "103",
@@ -1308,7 +1334,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "80%",
       "annual": "80%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "104",
@@ -1320,7 +1347,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "80%",
       "annual": "80%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "105",
@@ -1354,7 +1382,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "98%",
       "annual": "98%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "108",
@@ -1377,7 +1406,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "25%",
       "annual": "100%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "110",
@@ -1433,7 +1463,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "100%",
       "annual": "100%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "115",
@@ -1445,7 +1476,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "90%",
       "annual": "90%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "116",
@@ -1457,7 +1489,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "100%",
       "annual": "100%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "117",
@@ -1469,7 +1502,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "100%",
       "annual": "100%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "118",
@@ -1481,7 +1515,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "100%",
       "annual": "100%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "119",
@@ -1504,7 +1539,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "100%",
       "annual": "100%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "121",
@@ -1515,7 +1551,9 @@ export const INDICATORS: Indicator[] = [
       "q3": 0,
       "q4": 0,
       "annual": "45%"
-    }
+    },
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "122",
@@ -1527,7 +1565,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "100%",
       "annual": "100%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "123",
@@ -1539,7 +1578,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "90%",
       "annual": "90%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "124",
@@ -1562,7 +1602,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "97%",
       "annual": "97%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "126",
@@ -1574,7 +1615,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "99%",
       "annual": "99%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "127",
@@ -1586,7 +1628,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "9%",
       "annual": "9%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "128",
@@ -1598,7 +1641,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "100%",
       "annual": "100%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "129",
@@ -1610,7 +1654,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "100%",
       "annual": "100%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "130",
@@ -1622,7 +1667,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "100%",
       "annual": "100%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "131",
@@ -1634,7 +1680,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "100%",
       "annual": "100%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "132",
@@ -1646,7 +1693,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "100%",
       "annual": "100%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "133",
@@ -1680,7 +1728,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "100%",
       "annual": "100%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "136",
@@ -1703,7 +1752,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "100%",
       "annual": "99.6%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "138",
@@ -1715,7 +1765,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "85%",
       "annual": "85%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "139",
@@ -1727,7 +1778,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "85%",
       "annual": "85%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "140",
@@ -1739,7 +1791,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "100%",
       "annual": "100%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "141",
@@ -1751,7 +1804,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "100%",
       "annual": "100%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "142",
@@ -1763,7 +1817,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "0%",
       "annual": "80%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "143",
@@ -1808,7 +1863,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "70%",
       "annual": "70%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "147",
@@ -1831,7 +1887,8 @@ export const INDICATORS: Indicator[] = [
       "q4": "100%",
       "annual": "100%"
     },
-    "isDual": true
+    "isDual": true,
+    "measurementType": "percentage"
   }
 ];
 

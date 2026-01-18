@@ -654,256 +654,158 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
       </div>
 
       {quarterStats && selectedIndicator && (
-        <div className="grid grid-cols-1 gap-5">
-
-          {/* Monthly Progress Chart - Dark Professional Design */}
-          <div className="xl:col-span-8 relative overflow-hidden rounded-2xl shadow-xl">
-            {/* Rich Dark Gradient Background */}
+        <div className="space-y-5">
+          {/* Monthly Progress Chart - MOVED TO TOP with increased height */}
+          <div className="relative overflow-hidden rounded-2xl shadow-lg">
             <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900"></div>
+            <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl"></div>
+            <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl"></div>
 
-            {/* Glowing orbs for depth */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl"></div>
-            <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl"></div>
-
-            {/* Subtle grid pattern */}
-            <div className="absolute inset-0 opacity-10" style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.1' fill-rule='evenodd'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/svg%3E")`
-            }}></div>
-
-            <div className="relative z-10 p-6 lg:p-8">
-              <div className="flex justify-between items-center mb-8">
+            <div className="relative z-10 p-6">
+              <div className="flex justify-between items-center mb-6">
                 <div>
-                  <p className="text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-1">Monthly Progress</p>
-                  <h3 className="text-xl font-bold text-white">{selectedQuarter?.name}</h3>
+                  <p className="text-xs font-semibold text-indigo-400 uppercase tracking-wider">Monthly Breakdown</p>
+                  <h3 className="text-lg font-bold text-white">{selectedQuarter?.name}</h3>
                 </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-lg border border-white/10">
-                  <span className={`w-2 h-2 rounded-full bg-emerald-400`}></span>
-                  <span className="text-[11px] text-white/80 font-semibold uppercase tracking-wide">Live</span>
+                <div className="flex items-center gap-2 px-2.5 py-1 bg-white/10 rounded-lg">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                  <span className="text-[10px] text-white/80 font-semibold uppercase">Live</span>
                 </div>
               </div>
 
-              {/* Chart Area */}
-              <div className="relative h-52 lg:h-60">
-                {/* Grid Lines */}
-                <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
-                  {[0, 1, 2, 3].map(i => (
-                    <div key={i} className="w-full h-px bg-white/10"></div>
-                  ))}
-                </div>
+              {/* Bar Chart - INCREASED HEIGHT */}
+              <div className="flex items-end justify-around gap-4 h-80">
+                {quarterStats.months.map((month, idx) => {
+                  const val = quarterStats.monthlyValues[idx];
+                  const maxVal = Math.max(...quarterStats.monthlyValues, 1);
+                  const heightPercent = Math.max((val / maxVal) * 100, 10);
+                  const expected = quarterStats.target / 3;
+                  const mPerf = (val / expected) * 100;
+                  const mColor = getPerformanceColor(mPerf);
 
-                {/* Trend Line */}
-                <svg className="absolute inset-0 w-full h-full overflow-visible z-10 pointer-events-none" preserveAspectRatio="none">
-                  <defs>
-                    <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor={getHexForColor(qColor)} stopOpacity="0.35" />
-                      <stop offset="100%" stopColor={getHexForColor(qColor)} stopOpacity="0.05" />
-                    </linearGradient>
-                    <filter id="glow">
-                      <feGaussianBlur stdDeviation="2" result="coloredBlur" />
-                      <feMerge>
-                        <feMergeNode in="coloredBlur" />
-                        <feMergeNode in="SourceGraphic" />
-                      </feMerge>
-                    </filter>
-                  </defs>
-
-                  {/* Area fill */}
-                  <path
-                    d={`${quarterStats.months.map((_, i) => {
-                      const val = quarterStats.monthlyValues[i];
-                      const maxVal = Math.max(...quarterStats.monthlyValues, 1);
-                      const x = 10 + (i / (quarterStats.months.length - 1 || 1)) * 80;
-                      const y = 90 - (val / maxVal) * 70;
-                      return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
-                    }).join(' ')} L 90 90 L 10 90 Z`}
-                    fill="url(#areaGradient)"
-                  />
-
-                  {/* Glowing Line */}
-                  <path
-                    d={quarterStats.months.map((_, i) => {
-                      const val = quarterStats.monthlyValues[i];
-                      const maxVal = Math.max(...quarterStats.monthlyValues, 1);
-                      const x = 10 + (i / (quarterStats.months.length - 1 || 1)) * 80;
-                      const y = 90 - (val / maxVal) * 70;
-                      return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
-                    }).join(' ')}
-                    fill="none"
-                    stroke={getHexForColor(qColor)}
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    filter="url(#glow)"
-                  />
-
-                  {/* Data points with glow */}
-                  {quarterStats.months.map((_, i) => {
-                    const val = quarterStats.monthlyValues[i];
-                    const maxVal = Math.max(...quarterStats.monthlyValues, 1);
-                    const x = 10 + (i / (quarterStats.months.length - 1 || 1)) * 80;
-                    const y = 90 - (val / maxVal) * 70;
-                    return (
-                      <circle
-                        key={i}
-                        cx={`${x}%`}
-                        cy={`${y}%`}
-                        r="6"
-                        fill={getHexForColor(qColor)}
-                        stroke="white"
-                        strokeWidth="2"
-                        filter="url(#glow)"
-                      />
-                    );
-                  })}
-                </svg>
-
-                {/* Bar Chart */}
-                <div className="absolute inset-0 flex items-end justify-around px-6 lg:px-12 gap-4 lg:gap-6 z-20">
-                  {quarterStats.months.map((month, idx) => {
-                    const val = quarterStats.monthlyValues[idx];
-                    const maxVal = Math.max(...quarterStats.monthlyValues, 1);
-                    const heightPercent = Math.max((val / maxVal) * 70, 8);
-                    const expected = quarterStats.target / 3;
-                    const mPerf = (val / expected) * 100;
-                    const mColor = getPerformanceColor(mPerf);
-
-                    return (
-                      <div
-                        key={month}
-                        className="flex-1 flex flex-col items-center group cursor-pointer max-w-[70px]"
-                        onMouseEnter={() => setHoveredMonth(month)}
-                        onMouseLeave={() => setHoveredMonth(null)}
-                      >
-                        {/* Tooltip */}
-                        <div className={`absolute bottom-[calc(100%-10px)] opacity-0 group-hover:opacity-100 transition-all duration-200 z-40 pointer-events-none transform group-hover:scale-100 scale-95`}>
-                          <div className="bg-white text-slate-900 px-4 py-2.5 rounded-xl shadow-2xl text-center border border-slate-100">
-                            <p className="text-slate-400 text-[10px] uppercase font-semibold tracking-wide">{month}</p>
-                            <p className="text-xl font-black">{val.toLocaleString()}</p>
-                          </div>
-                          <div className="w-3 h-3 bg-white rotate-45 mx-auto -mt-1.5 border-b border-r border-slate-100"></div>
-                        </div>
-
-                        {/* Bar */}
-                        <div className="w-full relative h-[170px] flex items-end">
-                          <div
-                            className={`w-full rounded-lg transition-all duration-500 ease-out group-hover:scale-105`}
-                            style={{
-                              height: `${heightPercent}%`,
-                              background: `linear-gradient(180deg, ${getHexForColor(mColor)} 0%, ${getHexForColor(mColor)}80 100%)`,
-                              boxShadow: `0 0 20px ${getHexForColor(mColor)}50, 0 0 40px ${getHexForColor(mColor)}20`
-                            }}
-                          />
-                        </div>
-
-                        {/* Month Label */}
-                        <span className={`text-[11px] font-bold mt-3 uppercase tracking-wider transition-all duration-200 ${hoveredMonth === month ? 'text-white scale-110' : 'text-slate-400'}`}>
-                          {month.substring(0, 3)}
-                        </span>
+                  return (
+                    <div key={month} className="flex-1 flex flex-col items-center group cursor-pointer">
+                      <div className="text-sm font-bold text-white mb-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {val.toLocaleString()}
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Quarterly Progress */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-5">Quarterly Progress</p>
-
-            <div className="flex flex-col items-center">
-              {/* Progress Ring */}
-              <div className="relative w-36 h-36">
-                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r="40" fill="none" stroke="#f1f5f9" strokeWidth="8" />
-                  <circle
-                    cx="50" cy="50" r="40" fill="none"
-                    stroke={getHexForColor(qColor)}
-                    strokeWidth="8"
-                    strokeLinecap="round"
-                    strokeDasharray="251"
-                    strokeDashoffset={251 - (251 * Math.min(quarterStats.performance, 100)) / 100}
-                    className="transition-all duration-700 ease-out"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-3xl font-bold text-slate-800">{Math.round(quarterStats.performance)}%</span>
-                  <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Achieved</span>
-                </div>
-              </div>
-
-              {/* Stats */}
-              <div className="w-full grid grid-cols-2 gap-3 mt-6">
-                <div className="text-center p-3 bg-slate-50 rounded-xl">
-                  <p className="text-[10px] font-semibold text-slate-400 uppercase">Target</p>
-                  <p className="text-lg font-bold text-slate-800">{quarterStats.target.toLocaleString()}</p>
-                </div>
-                <div className="text-center p-3 bg-slate-50 rounded-xl">
-                  <p className="text-[10px] font-semibold text-slate-400 uppercase">Actual</p>
-                  <p className="text-lg font-bold text-slate-800">{quarterStats.totalActual.toLocaleString()}</p>
-                </div>
-              </div>
-
-              {/* Yearly Progress - Compact */}
-              <div className="w-full mt-5 pt-5 border-t border-slate-100">
-                <div className="flex items-center gap-3">
-                  <div className="relative w-12 h-12 shrink-0">
-                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                      <circle cx="50" cy="50" r="40" fill="none" stroke="#f1f5f9" strokeWidth="8" />
-                      <circle
-                        cx="50" cy="50" r="40" fill="none"
-                        stroke="#6366f1"
-                        strokeWidth="8"
-                        strokeLinecap="round"
-                        strokeDasharray="251"
-                        strokeDashoffset={251 - (251 * annualCompletion) / 100}
-                        className="transition-all duration-700"
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-xs font-bold text-indigo-600">{Math.round(annualCompletion)}%</span>
+                      <div className="w-full flex items-end h-64">
+                        <div
+                          className="w-full rounded-t-xl transition-all duration-300 group-hover:scale-105"
+                          style={{
+                            height: `${heightPercent}%`,
+                            background: `linear-gradient(180deg, ${getHexForColor(mColor)} 0%, ${getHexForColor(mColor)}80 100%)`,
+                            boxShadow: `0 0 20px ${getHexForColor(mColor)}40`
+                          }}
+                        />
+                      </div>
+                      <span className={`text-xs font-semibold mt-3 uppercase tracking-wide transition-colors ${hoveredMonth === month ? 'text-white' : 'text-slate-400'}`}
+                        onMouseEnter={() => setHoveredMonth(month)}
+                        onMouseLeave={() => setHoveredMonth(null)}>
+                        {month.substring(0, 3)}
+                      </span>
                     </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Quarter & Annual Progress Side by Side - NOW BELOW BAR CHART */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Quarterly Progress - LEFT */}
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">Quarter Progress</p>
+              <div className="flex items-center gap-5">
+                {/* Progress Ring - Smaller */}
+                <div className="relative w-24 h-24 flex-shrink-0">
+                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#f1f5f9" strokeWidth="10" />
+                    <circle
+                      cx="50" cy="50" r="40" fill="none"
+                      stroke={getHexForColor(qColor)}
+                      strokeWidth="10"
+                      strokeLinecap="round"
+                      strokeDasharray="251"
+                      strokeDashoffset={251 - (251 * Math.min(quarterStats.performance, 100)) / 100}
+                      className="transition-all duration-700 ease-out"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-xl font-bold text-slate-800">{Math.round(quarterStats.performance)}%</span>
                   </div>
-                  <div>
-                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Annual</p>
-                    <p className="text-sm font-semibold text-slate-700">Yearly Goal</p>
+                </div>
+                {/* Stats */}
+                <div className="flex-1 space-y-2">
+                  <div className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
+                    <span className="text-xs text-slate-500">Target</span>
+                    <span className="text-sm font-bold text-slate-700">{quarterStats.target.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
+                    <span className="text-xs text-slate-500">Actual</span>
+                    <span className="text-sm font-bold text-slate-700">{quarterStats.totalActual.toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Annual Progress - RIGHT */}
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">Annual Progress</p>
+              <div className="flex items-center gap-5">
+                {/* Progress Ring - Same size as Quarter */}
+                <div className="relative w-24 h-24 flex-shrink-0">
+                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#f1f5f9" strokeWidth="10" />
+                    <circle
+                      cx="50" cy="50" r="40" fill="none"
+                      stroke="#6366f1"
+                      strokeWidth="10"
+                      strokeLinecap="round"
+                      strokeDasharray="251"
+                      strokeDashoffset={251 - (251 * Math.min(annualCompletion, 100)) / 100}
+                      className="transition-all duration-700 ease-out"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-xl font-bold text-slate-800">{Math.round(annualCompletion)}%</span>
+                  </div>
+                </div>
+                {/* Stats */}
+                <div className="flex-1 space-y-2">
+                  <div className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
+                    <span className="text-xs text-slate-500">Yearly Target</span>
+                    <span className="text-sm font-bold text-slate-700">{(selectedIndicator.annualTarget || 0).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 bg-indigo-50 rounded-lg">
+                    <span className="text-xs text-indigo-600">Status</span>
+                    <span className="text-sm font-bold text-indigo-700">{annualCompletion >= 75 ? 'On Track' : annualCompletion >= 50 ? 'Progressing' : 'Needs Attention'}</span>
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Submission Info - Clean & Professional */}
+          {/* Submission Info - Compact */}
           {latestSubmission && (
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-              <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6 p-5">
-                {/* Submitter */}
-                <div className="flex items-center gap-3 md:pr-6 md:border-r md:border-slate-100">
-                  <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-semibold text-sm shadow-sm">
+            <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-semibold text-sm">
                     {latestSubmission.submittedBy?.charAt(0)?.toUpperCase() || 'U'}
                   </div>
                   <div>
-                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Submitted by</p>
+                    <p className="text-[10px] text-slate-400 uppercase">Submitted by</p>
                     <p className="text-sm font-semibold text-slate-700">{latestSubmission.submittedBy || 'Unknown'}</p>
                   </div>
                 </div>
-
-                {/* Comment */}
                 {latestSubmission.comments && (
-                  <div className="flex-1 md:px-6 md:border-r md:border-slate-100">
-                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Comment</p>
-                    <p className="text-sm text-slate-600 leading-relaxed">"{latestSubmission.comments}"</p>
+                  <div className="flex-1 min-w-0 px-4 border-l border-slate-100">
+                    <p className="text-sm text-slate-600 truncate">"{latestSubmission.comments}"</p>
                   </div>
                 )}
-
-                {/* Date */}
-                <div className="md:pl-2">
-                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Date</p>
-                  <p className="text-sm font-medium text-slate-500">
-                    {new Date(latestSubmission.timestamp).toLocaleDateString('en-US', {
-                      month: 'short', day: 'numeric', year: 'numeric'
-                    })}
-                  </p>
+                <div className="text-right">
+                  <p className="text-[10px] text-slate-400 uppercase">Date</p>
+                  <p className="text-sm text-slate-500">{new Date(latestSubmission.timestamp).toLocaleDateString()}</p>
                 </div>
               </div>
             </div>
