@@ -343,6 +343,11 @@ export const calculateMonthlyProgress = (indicator: Indicator, value: number, qu
 export const getIndicatorUnit = (indicator: Indicator): string => {
     const name = indicator.name.toLowerCase();
 
+    // Currency indicators
+    if (name.includes('frw') || name.includes('rwf') || name.includes('revenue') || name.includes('amount')) {
+        return '(Frw)';
+    }
+
     // Percentage indicators
     if (indicator.measurementType === 'percentage' ||
         name.includes('rate') ||

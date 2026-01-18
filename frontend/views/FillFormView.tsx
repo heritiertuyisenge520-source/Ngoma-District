@@ -886,8 +886,8 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                       </div>
                     )}
 
-                    {/* Generic Percentage Calculation for all percentage indicators not covered above */}
-                    {selectedIndicator?.measurementType === 'percentage' && !['3', '16', '24', '42', '87'].includes(indicatorId) && (
+                    {/* Generic Percentage Calculation for all percentage indicators */}
+                    {selectedIndicator?.measurementType === 'percentage' && (
                       <div className="space-y-4 bg-gradient-to-br from-blue-50 to-indigo-50 p-5 rounded-xl border-2 border-blue-200">
                         <div className="flex items-center space-x-2 mb-2">
                           <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
