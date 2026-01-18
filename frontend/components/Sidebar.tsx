@@ -12,9 +12,11 @@ interface SidebarProps {
   } | null;
   onLogout: () => void;
   setActiveView: (view: any) => void;
+  isOpen?: boolean; // Added to control mobile visibility
+  onClose?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeView, user, onLogout, setActiveView }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeView, user, onLogout, setActiveView, isOpen, onClose }) => {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
   const isSuperAdmin = user?.userType === 'super_admin';
@@ -64,95 +66,107 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, user, onLogout, setActive
     return items;
   }, [isSuperAdmin, isHeadOfUnit, isEmployee]);
 
+  const handleItemClick = (itemId: string) => {
+    setActiveView(itemId);
+    if (onClose) onClose();
+  };
+
   return (
-    <div className="h-full flex flex-col">
-      {/* Logo */}
-      <div className="p-5 border-b border-slate-700/50">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
-            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+    <>
+      {/* 1. DARK OVERLAY FOR MOBILE - Only shows when isOpen is true */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[40] md:hidden transition-opacity duration-300"
+          onClick={onClose}
+        />
+      )}
+
+      {/* 2. THE ACTUAL SIDEBAR - Handles fixed positioning and sliding */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-[50] w-64 bg-[#1e293b] border-r border-slate-700/50
+        transition-transform duration-300 ease-in-out flex flex-col
+        ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+      `}>
+        {/* Header with Logo */}
+        <div className="p-5 border-b border-slate-700/50 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-white">Imihigo</h1>
+              <p className="text-[10px] text-slate-400 uppercase tracking-widest">Monitoring System</p>
+            </div>
+          </div>
+
+          {/* Close button - Only visible on mobile when open */}
+          <button
+            onClick={onClose}
+            className="md:hidden p-2 rounded-lg hover:bg-slate-700/50 transition-colors text-slate-400 hover:text-white"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-white">Imihigo</h1>
-            <p className="text-[10px] text-slate-400 uppercase tracking-widest">Monitoring System</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-        <p className="px-3 mb-3 text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Navigation</p>
-
-        {menuItems.map((item) => {
-          const isActive = activeView === item.id;
-          const isHovered = hoveredItem === item.id;
-
-          return (
-            <button
-              key={item.id}
-              onClick={() => setActiveView(item.id)}
-              onMouseEnter={() => setHoveredItem(item.id)}
-              onMouseLeave={() => setHoveredItem(null)}
-              className={`
-                w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium
-                transition-all duration-200 relative
-                ${isActive
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
-                }
-              `}
-            >
-              {/* Active indicator */}
-              {isActive && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-white rounded-r-full" />
-              )}
-
-              {/* Icon */}
-              <span className={`transition-transform duration-200 ${isActive || isHovered ? 'scale-110' : ''}`}>
-                {item.icon}
-              </span>
-
-              {/* Label */}
-              <span className="flex-1 text-left">{item.label}</span>
-
-              {/* Arrow */}
-              {isActive && (
-                <svg className="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              )}
-            </button>
-          );
-        })}
-      </nav>
-
-      {/* User & Logout */}
-      <div className="p-4 border-t border-slate-700/50">
-        {/* User Card */}
-        <div className="flex items-center gap-3 p-3 mb-3 rounded-xl bg-slate-700/30 hover:bg-slate-700/50 transition-colors cursor-pointer">
-          <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg">
-            {user?.name?.charAt(0).toUpperCase() || 'U'}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-white truncate">{user?.name || 'User'}</p>
-            <p className="text-[10px] text-slate-400 uppercase tracking-wide">{user?.userType?.replace('_', ' ')}</p>
-          </div>
+          </button>
         </div>
 
-        {/* Logout */}
-        <button
-          onClick={onLogout}
-          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-all font-semibold text-xs uppercase tracking-wider border border-red-500/20"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-          </svg>
-          <span>Logout</span>
-        </button>
-      </div>
-    </div>
+        {/* Navigation Section */}
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto custom-scrollbar">
+          <p className="px-3 mb-3 text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Navigation</p>
+          {menuItems.map((item) => {
+            const isActive = activeView === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleItemClick(item.id)}
+                onMouseEnter={() => setHoveredItem(item.id)}
+                onMouseLeave={() => setHoveredItem(null)}
+                className={`
+                  w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium
+                  transition-all duration-200 relative
+                  ${isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' : 'text-slate-400 hover:text-white hover:bg-slate-700/50'}
+                `}
+              >
+                {isActive && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-white rounded-r-full" />}
+                <span className={`transition-transform duration-200 ${isActive || hoveredItem === item.id ? 'scale-110' : ''}`}>
+                  {item.icon}
+                </span>
+                <span className="flex-1 text-left">{item.label}</span>
+                {isActive && (
+                  <svg className="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* User Card & Logout Button */}
+        <div className="p-4 border-t border-slate-700/50 bg-[#1e293b]">
+          <div className="flex items-center gap-3 p-3 mb-3 rounded-xl bg-slate-700/30">
+            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg">
+              {user?.name?.charAt(0).toUpperCase() || 'U'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-white truncate">{user?.name || 'User'}</p>
+              <p className="text-[10px] text-slate-400 uppercase tracking-wide">{user?.userType?.replace('_', ' ')}</p>
+            </div>
+          </div>
+          <button
+            onClick={onLogout}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-all font-semibold text-xs uppercase tracking-wider border border-red-500/20"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            <span>Logout</span>
+          </button>
+        </div>
+      </aside>
+    </>
   );
 };
 
