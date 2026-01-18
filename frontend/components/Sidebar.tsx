@@ -98,10 +98,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, user, onLogout, setActive
               <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-slate-900 animate-pulse"></div>
             </div>
             <div>
-              <h1 className="text-xl font-black text-white tracking-tight">Imihigo</h1>
+              <h1 className="text-xl font-black text-white tracking-tight">Ngoma District</h1>
               <div className="flex items-center gap-1.5">
                 <span className="w-1 h-1 bg-blue-500 rounded-full"></span>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Tracking Tool</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Imihigo Tracking tool</p>
               </div>
             </div>
           </div>

@@ -100,7 +100,66 @@ const App: React.FC = () => {
     setIsSidebarOpen(false);
   };
 
+  const handleEditEntry = async (entry: MonitoringEntry) => {
+    // Only allow editing for super admins and heads of unit
+    if (user?.userType !== 'super_admin' && user?.userType !== 'head') {
+      alert('You do not have permission to edit data');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_ENDPOINTS.SUBMISSIONS}/${(entry as any)._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entry)
+      });
+
+      if (response.ok) {
+        // Update the entry in the local state
+        setEntries(entries.map(e => (e as any)._id === (entry as any)._id ? entry : e));
+      } else {
+        alert('Failed to update entry');
+      }
+    } catch (error) {
+      console.error('Error updating entry:', error);
+      alert('Error connecting to server');
+    }
+  };
+
+  const handleDeleteEntry = async (id: string) => {
+    // Only allow deletion for super admins and heads of unit
+    if (user?.userType !== 'super_admin' && user?.userType !== 'head') {
+      alert('You do not have permission to delete data');
+      return;
+    }
+
+    if (window.confirm('Are you sure you want to delete this entry? This action cannot be undone.')) {
+      try {
+        const response = await fetch(`${API_ENDPOINTS.SUBMISSIONS}/${id}`, {
+          method: 'DELETE'
+        });
+
+        if (response.ok) {
+          // Remove the entry from local state
+          setEntries(entries.filter(e => (e as any)._id !== id));
+        } else {
+          alert('Failed to delete entry');
+        }
+      } catch (error) {
+        console.error('Error deleting entry:', error);
+        alert('Error connecting to server');
+      }
+    }
+  };
+
   if (!user) return <LoginView onLogin={handleLogin} />;
+<task_progress>
+- [x] Examine current permission structure
+- [x] Check available views for data editing
+- [x] Add data editing permission for admins
+- [x] Update sidebar menu for admins
+- [ ] Save changes
+</task_progress>
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-slate-100">
@@ -145,7 +204,7 @@ const App: React.FC = () => {
                 onCancelEdit={() => setActiveView('responses')}
               />
             )}
-            {activeView === 'responses' && <ResponsesView entries={entries} user={user} />}
+            {activeView === 'responses' && <ResponsesView entries={entries} user={user} onEdit={handleEditEntry} onDelete={handleDeleteEntry} />}
             {activeView === 'targets' && <TargetView />}
             {activeView === 'ppt' && <PowerPointView entries={entries} />}
             {activeView === 'preview' && <PreviewView entries={entries} />}

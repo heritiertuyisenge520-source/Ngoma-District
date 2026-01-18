@@ -252,15 +252,6 @@ const ProgressCalculatorView: React.FC<ProgressCalculatorViewProps> = ({ entries
                                 {formulaExplanation.desc}
                             </p>
                             <div className="text-xs text-blue-200 mt-2 space-y-1">
-                                <p>📚 <a href="../progress%20calculator.md" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">
-                                    View complete documentation for all indicators
-                                </a></p>
-                                <p>📊 Indicator {selectedIndicator?.id}: {selectedIndicator?.name}</p>
-                                {selectedIndicator?.measurementType && (
-                                    <p>📈 Type: {selectedIndicator.measurementType}</p>
-                                )}
-                                <p>📉 Targets: Q1: {selectedIndicator?.targets?.q1}, Q2: {selectedIndicator?.targets?.q2}, Q3: {selectedIndicator?.targets?.q3}, Q4: {selectedIndicator?.targets?.q4}</p>
-                                <p>🎯 Annual: {selectedIndicator?.targets?.annual}</p>
                             </div>
                         </div>
                     )}
