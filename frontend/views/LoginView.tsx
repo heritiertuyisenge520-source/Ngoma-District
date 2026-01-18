@@ -676,6 +676,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                                             onChange={(e) => setPassword(e.target.value)}
                                             placeholder={viewMode === 'login' ? "Enter your password" : "Create a strong password (min. 8 characters)"}
                                             className="w-full h-14 bg-white/5 border border-white/10 rounded-xl px-5 pr-12 text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all font-medium hover:border-white/20"
+                                            autoComplete={viewMode === 'login' ? "current-password" : "new-password"}
                                             required
                                         />
                                         <button
@@ -718,6 +719,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                                                         ? 'border-green-500/50 focus:border-green-500 focus:ring-green-500/10'
                                                         : 'border-white/10 focus:border-blue-500 focus:ring-blue-500/10'
                                                     }`}
+                                                autoComplete={viewMode === 'login' ? "current-password" : "new-password"}
                                                 required={viewMode === 'register'}
                                             />
                                             {confirmPassword && (

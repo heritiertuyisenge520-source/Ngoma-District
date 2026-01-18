@@ -714,8 +714,8 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
                       const maxVal = Math.max(...quarterStats.monthlyValues, 1);
                       const x = 10 + (i / (quarterStats.months.length - 1 || 1)) * 80;
                       const y = 90 - (val / maxVal) * 70;
-                      return `${i === 0 ? 'M' : 'L'} ${x}% ${y}%`;
-                    }).join(' ')} L 90% 90% L 10% 90% Z`}
+                      return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
+                    }).join(' ')} L 90 90 L 10 90 Z`}
                     fill="url(#areaGradient)"
                   />
 
@@ -726,7 +726,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
                       const maxVal = Math.max(...quarterStats.monthlyValues, 1);
                       const x = 10 + (i / (quarterStats.months.length - 1 || 1)) * 80;
                       const y = 90 - (val / maxVal) * 70;
-                      return `${i === 0 ? 'M' : 'L'} ${x}% ${y}%`;
+                      return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
                     }).join(' ')}
                     fill="none"
                     stroke={getHexForColor(qColor)}
