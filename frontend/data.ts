@@ -11,6 +11,7 @@ export interface Indicator {
   isDual?: boolean;
   measurementType?: 'cumulative' | 'percentage' | 'decreasing';
   subIndicatorIds?: Record<string, string>;
+  baseline?: number;
 }
 
 export const INDICATORS: Indicator[] = [
@@ -466,7 +467,8 @@ export const INDICATORS: Indicator[] = [
     "isDual": true,
     "subIndicatorIds": {
       "pig": "32",
-      "chicken": "33"
+      "chicken": "33",
+      "cows": "33a"
     }
   },
   {
@@ -489,6 +491,17 @@ export const INDICATORS: Indicator[] = [
       "q3": 7000,
       "q4": 3000,
       "annual": 11000
+    }
+  },
+  {
+    "id": "33a",
+    "name": "Number of cows insured",
+    "targets": {
+      "q1": 150,
+      "q2": 200,
+      "q3": 450,
+      "q4": 230,
+      "annual": 1030
     }
   },
   {
@@ -905,6 +918,34 @@ export const INDICATORS: Indicator[] = [
       "annual": "80%"
     },
     "isDual": true,
+    "measurementType": "percentage",
+    "subIndicatorIds": {
+      "hypertension": "69a",
+      "diabetes": "69b"
+    }
+  },
+  {
+    "id": "69a",
+    "name": "Percentage of people screened positive to Hypertension enrolled into care and treatment",
+    "targets": {
+      "q1": "20%",
+      "q2": "40%",
+      "q3": "60%",
+      "q4": "80%",
+      "annual": "80%"
+    },
+    "measurementType": "percentage"
+  },
+  {
+    "id": "69b",
+    "name": "Percentage of people screened positive to Diabetes enrolled into care and treatment",
+    "targets": {
+      "q1": "20%",
+      "q2": "40%",
+      "q3": "60%",
+      "q4": "80%",
+      "annual": "80%"
+    },
     "measurementType": "percentage"
   },
   {
@@ -1173,7 +1214,8 @@ export const INDICATORS: Indicator[] = [
       "q4": 0,
       "annual": "27%"
     },
-    "measurementType": "decreasing"
+    "measurementType": "decreasing",
+    "baseline": 100
   },
   {
     "id": "91",
@@ -1185,7 +1227,8 @@ export const INDICATORS: Indicator[] = [
       "q4": 0,
       "annual": "4.9%"
     },
-    "measurementType": "decreasing"
+    "measurementType": "decreasing",
+    "baseline": 50
   },
   {
     "id": "92",
@@ -1283,6 +1326,47 @@ export const INDICATORS: Indicator[] = [
       "annual": "100%"
     },
     "isDual": true,
+    "measurementType": "percentage",
+    "subIndicatorIds": {
+      "students": "99a",
+      "material": "99b",
+      "workers": "99c"
+    }
+  },
+  {
+    "id": "99a",
+    "name": "Percentage of Education information recorded into the SDMS system with accuracy - Students",
+    "targets": {
+      "q1": "-",
+      "q2": "70%",
+      "q3": "80%",
+      "q4": "85%",
+      "annual": "100%"
+    },
+    "measurementType": "percentage"
+  },
+  {
+    "id": "99b",
+    "name": "Percentage of Education information recorded into the SDMS system with accuracy - Material and Buildings",
+    "targets": {
+      "q1": "-",
+      "q2": "70%",
+      "q3": "80%",
+      "q4": "85%",
+      "annual": "100%"
+    },
+    "measurementType": "percentage"
+  },
+  {
+    "id": "99c",
+    "name": "Percentage of Education information recorded into the SDMS system with accuracy - Workers",
+    "targets": {
+      "q1": "-",
+      "q2": "70%",
+      "q3": "80%",
+      "q4": "85%",
+      "annual": "100%"
+    },
     "measurementType": "percentage"
   },
   {

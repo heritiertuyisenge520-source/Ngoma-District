@@ -242,7 +242,7 @@ const ProgressCalculatorView: React.FC<ProgressCalculatorViewProps> = ({ entries
                         </div>
                     </div>
 
-                    {formulaExplanation && (
+                        {formulaExplanation && (
                         <div className="bg-blue-600 p-6 rounded-3xl shadow-xl shadow-blue-500/20 text-white space-y-3">
                             <h3 className="font-bold text-blue-100 text-xs uppercase tracking-widest">{formulaExplanation.title}</h3>
                             <div className="bg-blue-700/50 p-3 rounded-xl font-mono text-sm border border-blue-400/30">
@@ -251,6 +251,17 @@ const ProgressCalculatorView: React.FC<ProgressCalculatorViewProps> = ({ entries
                             <p className="text-xs text-blue-100 leading-relaxed font-medium">
                                 {formulaExplanation.desc}
                             </p>
+                            <div className="text-xs text-blue-200 mt-2 space-y-1">
+                                <p>📚 <a href="../progress%20calculator.md" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">
+                                    View complete documentation for all indicators
+                                </a></p>
+                                <p>📊 Indicator {selectedIndicator?.id}: {selectedIndicator?.name}</p>
+                                {selectedIndicator?.measurementType && (
+                                    <p>📈 Type: {selectedIndicator.measurementType}</p>
+                                )}
+                                <p>📉 Targets: Q1: {selectedIndicator?.targets?.q1}, Q2: {selectedIndicator?.targets?.q2}, Q3: {selectedIndicator?.targets?.q3}, Q4: {selectedIndicator?.targets?.q4}</p>
+                                <p>🎯 Annual: {selectedIndicator?.targets?.annual}</p>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -363,6 +374,36 @@ const ProgressCalculatorView: React.FC<ProgressCalculatorViewProps> = ({ entries
                                             </p>
                                             <div className="text-4xl font-black text-blue-500">{calcResult?.performance?.toFixed(1) || 0}%</div>
                                         </div>
+                                    </div>
+                                </div>
+
+                                {/* Detailed Calculation Breakdown */}
+                                <div className="bg-slate-50 p-6 border-t border-slate-100">
+                                    <h3 className="font-bold text-slate-800 text-sm mb-3">🔢 Calculation Breakdown</h3>
+                                    <div className="space-y-2 text-xs">
+                                        {hasSubIndicators ? (
+                                            <>
+                                                <p><span className="font-bold">Step 1:</span> Calculate each sub-indicator progress separately</p>
+                                                <p><span className="font-bold">Step 2:</span> Average all sub-indicator percentages</p>
+                                                <p><span className="font-bold">Step 3:</span> Parent progress = ({subIndicatorProgress.map(s => s.performance.toFixed(1)).join(' + ')}) / {subIndicatorProgress.length} = {calcResult?.performance?.toFixed(1)}%</p>
+                                            </>
+                                        ) : isAnnual ? (
+                                            <>
+                                                <p><span className="font-bold">Formula:</span> (Total Achievement / Annual Target) × 100</p>
+                                                <p><span className="font-bold">Calculation:</span> ({calcResult?.totalActual?.toLocaleString() || 0} / {calcResult?.target?.toLocaleString() || 0}) × 100 = {calcResult?.performance?.toFixed(1)}%</p>
+                                            </>
+                                        ) : selectedIndicator?.measurementType === 'decreasing' ? (
+                                            <>
+                                                <p><span className="font-bold">Formula:</span> (Target / Achievement) × 100</p>
+                                                <p><span className="font-bold">Calculation:</span> ({calcResult?.target?.toLocaleString() || 0} / {calcResult?.totalActual?.toLocaleString() || 0}) × 100 = {calcResult?.performance?.toFixed(1)}%</p>
+                                                <p><span className="text-blue-600 font-medium">ⓘ Lower achievement = higher progress for decreasing indicators</span></p>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <p><span className="font-bold">Formula:</span> (Achievement / Target) × 100</p>
+                                                <p><span className="font-bold">Calculation:</span> ({calcResult?.totalActual?.toLocaleString() || 0} / {calcResult?.target?.toLocaleString() || 0}) × 100 = {calcResult?.performance?.toFixed(1)}%</p>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             </div>

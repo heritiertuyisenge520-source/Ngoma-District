@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import SummaryCard from '../components/SummaryCard';
-import { PILLARS, Indicator } from '../data';
+import { PILLARS, INDICATORS, Indicator } from '../data';
 import { MonitoringEntry } from '../types';
 import { API_ENDPOINTS, getSubmissionUrl } from '../config/api';
 import { getIndicatorUnit } from '../utils/progressUtils';
@@ -177,14 +177,10 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
   // Helper function to get sub-indicator target by sub-indicator ID
   const getSubIndicatorTarget = (subIndicatorId: string): number | string => {
     if (!quarterId) return 0;
-    // Find the sub-indicator across all pillars
-    for (const pillar of PILLARS) {
-      for (const output of pillar.outputs) {
-        const subInd = output.indicators.find(ind => ind.id === subIndicatorId);
-        if (subInd && subInd.targets) {
-          return subInd.targets[quarterId as keyof typeof subInd.targets] || 0;
-        }
-      }
+    // Find the sub-indicator in the global INDICATORS array
+    const subInd = INDICATORS.find(ind => ind.id === subIndicatorId);
+    if (subInd && subInd.targets) {
+      return subInd.targets[quarterId as keyof typeof subInd.targets] || 0;
     }
     return 0;
   };
@@ -945,7 +941,21 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                     )}
 
                     {indicatorId === '31' && (
-                      <div className="grid grid-cols-2 gap-3 md:gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+                        <div className="space-y-1.5">
+                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
+                            <span>Cows Insured</span>
+                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('33a')}</span>
+                          </label>
+                          <input
+                            type="number"
+                            value={subValues['cows'] ?? ''}
+                            onChange={(e) => handleSubValueChange('cows', e.target.value)}
+                            placeholder="Number of cows"
+                            className={`${inputClasses} placeholder:text-slate-300 placeholder:font-normal`}
+                            required
+                          />
+                        </div>
                         <div className="space-y-1.5">
                           <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
                             <span>Pigs Insured</span>
@@ -962,14 +972,14 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                         </div>
                         <div className="space-y-1.5">
                           <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
-                            <span>Chicken Insured</span>
+                            <span>Poultry Insured</span>
                             <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('33')}</span>
                           </label>
                           <input
                             type="number"
                             value={subValues['chicken'] ?? ''}
                             onChange={(e) => handleSubValueChange('chicken', e.target.value)}
-                            placeholder="Number of chicken"
+                            placeholder="Number of poultry"
                             className={`${inputClasses} placeholder:text-slate-300 placeholder:font-normal`}
                           />
                         </div>
@@ -1008,8 +1018,903 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                       </div>
                     )}
 
-                    {/* Generic Percentage Calculation for all percentage indicators */}
-                    {selectedIndicator?.measurementType === 'percentage' && (
+                    {/* Hypertension and Diabetes Tracking (Indicator 69) */}
+                    {indicatorId === '69' && (
+                      <div className="space-y-6 bg-gradient-to-br from-red-50 to-pink-50 p-5 rounded-xl border-2 border-red-200">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                          </svg>
+                          <h4 className="font-bold text-red-800 text-sm">Hypertension & Diabetes Tracking</h4>
+                        </div>
+
+                        {/* Hypertension Section */}
+                        <div className="space-y-4 bg-white p-4 rounded-lg border border-red-100">
+                          <h5 className="text-xs font-black text-red-700 uppercase tracking-wider flex items-center gap-2">
+                            <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                            Hypertension Enrollment
+                          </h5>
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* Hypertension - Target Population */}
+                            <div className="space-y-1.5">
+                              <label className="block text-[10px] font-bold text-red-700 uppercase tracking-wider">
+                                Target Population
+                              </label>
+                              <input
+                                type="number"
+                                value={subValues['hypertension_target'] ?? ''}
+                                onChange={(e) => handleSubValueChange('hypertension_target', e.target.value)}
+                                placeholder="e.g. 1000"
+                                className={`${inputClasses} placeholder:text-slate-300 bg-white`}
+                                min="1"
+                              />
+                              <p className="text-[9px] text-slate-500">Total screened for hypertension</p>
+                            </div>
+
+                            {/* Hypertension - Enrolled */}
+                            <div className="space-y-1.5">
+                              <label className="block text-[10px] font-bold text-red-700 uppercase tracking-wider">
+                                Enrolled in Care
+                              </label>
+                              <input
+                                type="number"
+                                value={subValues['hypertension_enrolled'] ?? ''}
+                                onChange={(e) => handleSubValueChange('hypertension_enrolled', e.target.value)}
+                                placeholder="e.g. 800"
+                                className={`${inputClasses} placeholder:text-slate-300 bg-white`}
+                                min="0"
+                              />
+                              <p className="text-[9px] text-slate-500">Number enrolled in treatment</p>
+                            </div>
+
+                            {/* Hypertension - Calculated Percentage */}
+                            <div className="space-y-1.5">
+                              <label className="block text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
+                                Enrollment Rate
+                              </label>
+                              <div className={`h-12 px-4 rounded-xl border-2 ${Number(subValues['hypertension_target']) > 0
+                                ? 'border-emerald-300 bg-emerald-50'
+                                : 'border-slate-200 bg-slate-100'
+                                } flex items-center`}>
+                                <span className={`text-xl font-black ${Number(subValues['hypertension_target']) > 0
+                                  ? 'text-emerald-600'
+                                  : 'text-slate-400'
+                                  }`}>
+                                  {Number(subValues['hypertension_target']) > 0 && subValues['hypertension_enrolled'] !== undefined
+                                    ? ((Number(subValues['hypertension_enrolled']) / Number(subValues['hypertension_target'])) * 100).toFixed(1)
+                                    : '0.0'}%
+                                </span>
+                              </div>
+                              <p className="text-[9px] text-emerald-600 font-bold">Auto-calculated</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Diabetes Section */}
+                        <div className="space-y-4 bg-white p-4 rounded-lg border border-blue-100">
+                          <h5 className="text-xs font-black text-blue-700 uppercase tracking-wider flex items-center gap-2">
+                            <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                            Diabetes Enrollment
+                          </h5>
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* Diabetes - Target Population */}
+                            <div className="space-y-1.5">
+                              <label className="block text-[10px] font-bold text-blue-700 uppercase tracking-wider">
+                                Target Population
+                              </label>
+                              <input
+                                type="number"
+                                value={subValues['diabetes_target'] ?? ''}
+                                onChange={(e) => handleSubValueChange('diabetes_target', e.target.value)}
+                                placeholder="e.g. 500"
+                                className={`${inputClasses} placeholder:text-slate-300 bg-white`}
+                                min="1"
+                              />
+                              <p className="text-[9px] text-slate-500">Total screened for diabetes</p>
+                            </div>
+
+                            {/* Diabetes - Enrolled */}
+                            <div className="space-y-1.5">
+                              <label className="block text-[10px] font-bold text-blue-700 uppercase tracking-wider">
+                                Enrolled in Care
+                              </label>
+                              <input
+                                type="number"
+                                value={subValues['diabetes_enrolled'] ?? ''}
+                                onChange={(e) => handleSubValueChange('diabetes_enrolled', e.target.value)}
+                                placeholder="e.g. 400"
+                                className={`${inputClasses} placeholder:text-slate-300 bg-white`}
+                                min="0"
+                              />
+                              <p className="text-[9px] text-slate-500">Number enrolled in treatment</p>
+                            </div>
+
+                            {/* Diabetes - Calculated Percentage */}
+                            <div className="space-y-1.5">
+                              <label className="block text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
+                                Enrollment Rate
+                              </label>
+                              <div className={`h-12 px-4 rounded-xl border-2 ${Number(subValues['diabetes_target']) > 0
+                                ? 'border-emerald-300 bg-emerald-50'
+                                : 'border-slate-200 bg-slate-100'
+                                } flex items-center`}>
+                                <span className={`text-xl font-black ${Number(subValues['diabetes_target']) > 0
+                                  ? 'text-emerald-600'
+                                  : 'text-slate-400'
+                                  }`}>
+                                  {Number(subValues['diabetes_target']) > 0 && subValues['diabetes_enrolled'] !== undefined
+                                    ? ((Number(subValues['diabetes_enrolled']) / Number(subValues['diabetes_target'])) * 100).toFixed(1)
+                                    : '0.0'}%
+                                </span>
+                              </div>
+                              <p className="text-[9px] text-emerald-600 font-bold">Auto-calculated</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Combined Summary */}
+                        <div className="mt-4 p-3 bg-white/70 rounded-lg border border-slate-200">
+                          <p className="text-[10px] text-slate-600 font-semibold">
+                            <span className="font-black text-slate-800">Note:</span> This indicator tracks both hypertension and diabetes enrollment separately. The overall progress will be calculated as the average of both enrollment rates.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Education Information Accuracy (Indicator 99) */}
+                    {indicatorId === '99' && (
+                      <div className="space-y-6 bg-gradient-to-br from-purple-50 to-indigo-50 p-5 rounded-xl border-2 border-purple-200">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v11.494m-9-5.747h18" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v11.494m-9-5.747h18" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v11.494m-9-5.747h18" />
+                          </svg>
+                          <h4 className="font-bold text-purple-800 text-sm">Education Information Accuracy</h4>
+                        </div>
+
+                        {/* Students Section */}
+                        <div className="space-y-4 bg-white p-4 rounded-lg border border-purple-100">
+                          <h5 className="text-xs font-black text-purple-700 uppercase tracking-wider flex items-center gap-2">
+                            <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                            Students Data Accuracy
+                          </h5>
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* Students - Target Population */}
+                            <div className="space-y-1.5">
+                              <label className="block text-[10px] font-bold text-purple-700 uppercase tracking-wider">
+                                Target Population
+                              </label>
+                              <input
+                                type="number"
+                                value={subValues['students_target'] ?? ''}
+                                onChange={(e) => handleSubValueChange('students_target', e.target.value)}
+                                placeholder="e.g. 5000"
+                                className={`${inputClasses} placeholder:text-slate-300 bg-white`}
+                                min="1"
+                              />
+                              <p className="text-[9px] text-slate-500">Total student records</p>
+                            </div>
+
+                            {/* Students - Accurate Records */}
+                            <div className="space-y-1.5">
+                              <label className="block text-[10px] font-bold text-purple-700 uppercase tracking-wider">
+                                Accurate Records
+                              </label>
+                              <input
+                                type="number"
+                                value={subValues['students_accurate'] ?? ''}
+                                onChange={(e) => handleSubValueChange('students_accurate', e.target.value)}
+                                placeholder="e.g. 4500"
+                                className={`${inputClasses} placeholder:text-slate-300 bg-white`}
+                                min="0"
+                              />
+                              <p className="text-[9px] text-slate-500">Records with accurate data</p>
+                            </div>
+
+                            {/* Students - Calculated Percentage */}
+                            <div className="space-y-1.5">
+                              <label className="block text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
+                                Accuracy Rate
+                              </label>
+                              <div className={`h-12 px-4 rounded-xl border-2 ${Number(subValues['students_target']) > 0
+                                ? 'border-emerald-300 bg-emerald-50'
+                                : 'border-slate-200 bg-slate-100'
+                                } flex items-center`}>
+                                <span className={`text-xl font-black ${Number(subValues['students_target']) > 0
+                                  ? 'text-emerald-600'
+                                  : 'text-slate-400'
+                                  }`}>
+                                  {Number(subValues['students_target']) > 0 && subValues['students_accurate'] !== undefined
+                                    ? ((Number(subValues['students_accurate']) / Number(subValues['students_target'])) * 100).toFixed(1)
+                                    : '0.0'}%
+                                </span>
+                              </div>
+                              <p className="text-[9px] text-emerald-600 font-bold">Auto-calculated</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Material and Buildings Section */}
+                        <div className="space-y-4 bg-white p-4 rounded-lg border border-blue-100">
+                          <h5 className="text-xs font-black text-blue-700 uppercase tracking-wider flex items-center gap-2">
+                            <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                            Material & Buildings Accuracy
+                          </h5>
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* Material - Target Population */}
+                            <div className="space-y-1.5">
+                              <label className="block text-[10px] font-bold text-blue-700 uppercase tracking-wider">
+                                Target Records
+                              </label>
+                              <input
+                                type="number"
+                                value={subValues['material_target'] ?? ''}
+                                onChange={(e) => handleSubValueChange('material_target', e.target.value)}
+                                placeholder="e.g. 200"
+                                className={`${inputClasses} placeholder:text-slate-300 bg-white`}
+                                min="1"
+                              />
+                              <p className="text-[9px] text-slate-500">Total infrastructure records</p>
+                            </div>
+
+                            {/* Material - Accurate Records */}
+                            <div className="space-y-1.5">
+                              <label className="block text-[10px] font-bold text-blue-700 uppercase tracking-wider">
+                                Accurate Records
+                              </label>
+                              <input
+                                type="number"
+                                value={subValues['material_accurate'] ?? ''}
+                                onChange={(e) => handleSubValueChange('material_accurate', e.target.value)}
+                                placeholder="e.g. 180"
+                                className={`${inputClasses} placeholder:text-slate-300 bg-white`}
+                                min="0"
+                              />
+                              <p className="text-[9px] text-slate-500">Records with accurate data</p>
+                            </div>
+
+                            {/* Material - Calculated Percentage */}
+                            <div className="space-y-1.5">
+                              <label className="block text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
+                                Accuracy Rate
+                              </label>
+                              <div className={`h-12 px-4 rounded-xl border-2 ${Number(subValues['material_target']) > 0
+                                ? 'border-emerald-300 bg-emerald-50'
+                                : 'border-slate-200 bg-slate-100'
+                                } flex items-center`}>
+                                <span className={`text-xl font-black ${Number(subValues['material_target']) > 0
+                                  ? 'text-emerald-600'
+                                  : 'text-slate-400'
+                                  }`}>
+                                  {Number(subValues['material_target']) > 0 && subValues['material_accurate'] !== undefined
+                                    ? ((Number(subValues['material_accurate']) / Number(subValues['material_target'])) * 100).toFixed(1)
+                                    : '0.0'}%
+                                </span>
+                              </div>
+                              <p className="text-[9px] text-emerald-600 font-bold">Auto-calculated</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Workers Section */}
+                        <div className="space-y-4 bg-white p-4 rounded-lg border border-green-100">
+                          <h5 className="text-xs font-black text-green-700 uppercase tracking-wider flex items-center gap-2">
+                            <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                            Workers Data Accuracy
+                          </h5>
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* Workers - Target Population */}
+                            <div className="space-y-1.5">
+                              <label className="block text-[10px] font-bold text-green-700 uppercase tracking-wider">
+                                Target Records
+                              </label>
+                              <input
+                                type="number"
+                                value={subValues['workers_target'] ?? ''}
+                                onChange={(e) => handleSubValueChange('workers_target', e.target.value)}
+                                placeholder="e.g. 500"
+                                className={`${inputClasses} placeholder:text-slate-300 bg-white`}
+                                min="1"
+                              />
+                              <p className="text-[9px] text-slate-500">Total staff records</p>
+                            </div>
+
+                            {/* Workers - Accurate Records */}
+                            <div className="space-y-1.5">
+                              <label className="block text-[10px] font-bold text-green-700 uppercase tracking-wider">
+                                Accurate Records
+                              </label>
+                              <input
+                                type="number"
+                                value={subValues['workers_accurate'] ?? ''}
+                                onChange={(e) => handleSubValueChange('workers_accurate', e.target.value)}
+                                placeholder="e.g. 475"
+                                className={`${inputClasses} placeholder:text-slate-300 bg-white`}
+                                min="0"
+                              />
+                              <p className="text-[9px] text-slate-500">Records with accurate data</p>
+                            </div>
+
+                            {/* Workers - Calculated Percentage */}
+                            <div className="space-y-1.5">
+                              <label className="block text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
+                                Accuracy Rate
+                              </label>
+                              <div className={`h-12 px-4 rounded-xl border-2 ${Number(subValues['workers_target']) > 0
+                                ? 'border-emerald-300 bg-emerald-50'
+                                : 'border-slate-200 bg-slate-100'
+                                } flex items-center`}>
+                                <span className={`text-xl font-black ${Number(subValues['workers_target']) > 0
+                                  ? 'text-emerald-600'
+                                  : 'text-slate-400'
+                                  }`}>
+                                  {Number(subValues['workers_target']) > 0 && subValues['workers_accurate'] !== undefined
+                                    ? ((Number(subValues['workers_accurate']) / Number(subValues['workers_target'])) * 100).toFixed(1)
+                                    : '0.0'}%
+                                </span>
+                              </div>
+                              <p className="text-[9px] text-emerald-600 font-bold">Auto-calculated</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Combined Summary */}
+                        <div className="mt-4 p-3 bg-white/70 rounded-lg border border-slate-200">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[10px] font-bold text-slate-700 uppercase">Overall SDMS Accuracy:</span>
+                            <span className="text-lg font-black text-indigo-600">
+                              {subValues['students_target'] && subValues['students_accurate'] &&
+                               subValues['material_target'] && subValues['material_accurate'] &&
+                               subValues['workers_target'] && subValues['workers_accurate']
+                                ? (
+                                    (
+                                      (Number(subValues['students_accurate']) / Number(subValues['students_target'])) * 100 +
+                                      (Number(subValues['material_accurate']) / Number(subValues['material_target'])) * 100 +
+                                      (Number(subValues['workers_accurate']) / Number(subValues['workers_target'])) * 100
+                                    ) / 3
+                                  ).toFixed(1)
+                                : '0.0'}%
+                            </span>
+                          </div>
+                          <p className="text-[9px] text-slate-500">
+                            Average accuracy rate across all three categories (Students, Material & Buildings, Workers)
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Construction Indicators - Percentage Only */}
+                    {indicatorId === '74' && (
+                      <div className="space-y-4 bg-gradient-to-br from-amber-50 to-yellow-50 p-5 rounded-xl border-2 border-amber-200">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                          </svg>
+                          <h4 className="font-bold text-amber-800 text-sm">Construction Progress - Percentage Only</h4>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="block text-[10px] font-bold text-amber-700 uppercase tracking-wider">
+                            Percentage Completed
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              value={subValues['percentage'] ?? ''}
+                              onChange={(e) => handleSubValueChange('percentage', e.target.value)}
+                              placeholder="e.g. 75"
+                              className={`${inputClasses} placeholder:text-slate-300 bg-white flex-1`}
+                              min="0"
+                              max="100"
+                              step="0.1"
+                            />
+                            <span className="text-xl font-black text-amber-700">%</span>
+                          </div>
+                          <p className="text-[9px] text-slate-500">Enter percentage of construction work completed (0-100)</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {indicatorId === '83' && (
+                      <div className="space-y-4 bg-gradient-to-br from-amber-50 to-yellow-50 p-5 rounded-xl border-2 border-amber-200">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                          </svg>
+                          <h4 className="font-bold text-amber-800 text-sm">ECD Construction Progress - Percentage Only</h4>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="block text-[10px] font-bold text-amber-700 uppercase tracking-wider">
+                            Percentage Completed
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              value={subValues['percentage'] ?? ''}
+                              onChange={(e) => handleSubValueChange('percentage', e.target.value)}
+                              placeholder="e.g. 75"
+                              className={`${inputClasses} placeholder:text-slate-300 bg-white flex-1`}
+                              min="0"
+                              max="100"
+                              step="0.1"
+                            />
+                            <span className="text-xl font-black text-amber-700">%</span>
+                          </div>
+                          <p className="text-[9px] text-slate-500">Enter percentage of ECD construction work completed (0-100)</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {indicatorId === '87' && (
+                      <div className="space-y-4 bg-gradient-to-br from-amber-50 to-yellow-50 p-5 rounded-xl border-2 border-amber-200">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                          </svg>
+                          <h4 className="font-bold text-amber-800 text-sm">Classroom & Toilet Construction Progress</h4>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <label className="block text-[10px] font-bold text-amber-700 uppercase tracking-wider">
+                              15 Classrooms Progress (%)
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                value={subValues['classrooms_percentage'] ?? ''}
+                                onChange={(e) => handleSubValueChange('classrooms_percentage', e.target.value)}
+                                placeholder="e.g. 60"
+                                className={`${inputClasses} placeholder:text-slate-300 bg-white flex-1`}
+                                min="0"
+                                max="100"
+                                step="0.1"
+                              />
+                              <span className="text-xl font-black text-amber-700">%</span>
+                            </div>
+                            <p className="text-[9px] text-slate-500">Percentage of 15 classrooms completed</p>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className="block text-[10px] font-bold text-amber-700 uppercase tracking-wider">
+                              24 Toilets Progress (%)
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                value={subValues['toilets_percentage'] ?? ''}
+                                onChange={(e) => handleSubValueChange('toilets_percentage', e.target.value)}
+                                placeholder="e.g. 75"
+                                className={`${inputClasses} placeholder:text-slate-300 bg-white flex-1`}
+                                min="0"
+                                max="100"
+                                step="0.1"
+                              />
+                              <span className="text-xl font-black text-amber-700">%</span>
+                            </div>
+                            <p className="text-[9px] text-slate-500">Percentage of 24 toilets completed</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {indicatorId === '88' && (
+                      <div className="space-y-4 bg-gradient-to-br from-amber-50 to-yellow-50 p-5 rounded-xl border-2 border-amber-200">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                          </svg>
+                          <h4 className="font-bold text-amber-800 text-sm">Toilet Construction Progress - Percentage Only</h4>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="block text-[10px] font-bold text-amber-700 uppercase tracking-wider">
+                            Percentage Completed
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              value={subValues['percentage'] ?? ''}
+                              onChange={(e) => handleSubValueChange('percentage', e.target.value)}
+                              placeholder="e.g. 75"
+                              className={`${inputClasses} placeholder:text-slate-300 bg-white flex-1`}
+                              min="0"
+                              max="100"
+                              step="0.1"
+                            />
+                            <span className="text-xl font-black text-amber-700">%</span>
+                          </div>
+                          <p className="text-[9px] text-slate-500">Enter percentage of toilet construction work completed (0-100)</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Student Attendance Indicator - Complex Calculation */}
+                    {indicatorId === '101' && (
+                      <div className="space-y-6 bg-gradient-to-br from-green-50 to-emerald-50 p-5 rounded-xl border-2 border-green-200">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v11.494m-9-5.747h18" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v11.494m-9-5.747h18" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v11.494m-9-5.747h18" />
+                          </svg>
+                          <h4 className="font-bold text-green-800 text-sm">Student Attendance - Multi-Category Calculation</h4>
+                        </div>
+
+                        <div className="space-y-4">
+                          {/* Primary School */}
+                          <div className="space-y-2 bg-white p-4 rounded-lg border border-green-100">
+                            <h5 className="text-xs font-black text-green-700 uppercase tracking-wider flex items-center gap-2">
+                              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                              Primary School Attendance
+                            </h5>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold text-green-700 uppercase tracking-wider">
+                                  Target Students
+                                </label>
+                                <input
+                                  type="number"
+                                  value={subValues['primary_target'] ?? ''}
+                                  onChange={(e) => handleSubValueChange('primary_target', e.target.value)}
+                                  placeholder="e.g. 5000"
+                                  className={`${inputClasses} placeholder:text-slate-300 bg-white`}
+                                  min="1"
+                                />
+                                <p className="text-[9px] text-slate-500">Total primary students</p>
+                              </div>
+
+                              <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold text-green-700 uppercase tracking-wider">
+                                  Attending Students
+                                </label>
+                                <input
+                                  type="number"
+                                  value={subValues['primary_attending'] ?? ''}
+                                  onChange={(e) => handleSubValueChange('primary_attending', e.target.value)}
+                                  placeholder="e.g. 4800"
+                                  className={`${inputClasses} placeholder:text-slate-300 bg-white`}
+                                  min="0"
+                                />
+                                <p className="text-[9px] text-slate-500">Students attending</p>
+                              </div>
+
+                              <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
+                                  Attendance Rate
+                                </label>
+                                <div className={`h-12 px-4 rounded-xl border-2 ${Number(subValues['primary_target']) > 0
+                                  ? 'border-emerald-300 bg-emerald-50'
+                                  : 'border-slate-200 bg-slate-100'
+                                  } flex items-center`}>
+                                  <span className={`text-xl font-black ${Number(subValues['primary_target']) > 0
+                                    ? 'text-emerald-600'
+                                    : 'text-slate-400'
+                                    }`}>
+                                    {Number(subValues['primary_target']) > 0 && subValues['primary_attending'] !== undefined
+                                      ? ((Number(subValues['primary_attending']) / Number(subValues['primary_target'])) * 100).toFixed(1)
+                                      : '0.0'}%
+                                  </span>
+                                </div>
+                                <p className="text-[9px] text-emerald-600 font-bold">Auto-calculated</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Secondary School */}
+                          <div className="space-y-2 bg-white p-4 rounded-lg border border-green-100">
+                            <h5 className="text-xs font-black text-green-700 uppercase tracking-wider flex items-center gap-2">
+                              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                              Secondary School Attendance
+                            </h5>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold text-green-700 uppercase tracking-wider">
+                                  Target Students
+                                </label>
+                                <input
+                                  type="number"
+                                  value={subValues['secondary_target'] ?? ''}
+                                  onChange={(e) => handleSubValueChange('secondary_target', e.target.value)}
+                                  placeholder="e.g. 3000"
+                                  className={`${inputClasses} placeholder:text-slate-300 bg-white`}
+                                  min="1"
+                                />
+                                <p className="text-[9px] text-slate-500">Total secondary students</p>
+                              </div>
+
+                              <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold text-green-700 uppercase tracking-wider">
+                                  Attending Students
+                                </label>
+                                <input
+                                  type="number"
+                                  value={subValues['secondary_attending'] ?? ''}
+                                  onChange={(e) => handleSubValueChange('secondary_attending', e.target.value)}
+                                  placeholder="e.g. 2850"
+                                  className={`${inputClasses} placeholder:text-slate-300 bg-white`}
+                                  min="0"
+                                />
+                                <p className="text-[9px] text-slate-500">Students attending</p>
+                              </div>
+
+                              <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
+                                  Attendance Rate
+                                </label>
+                                <div className={`h-12 px-4 rounded-xl border-2 ${Number(subValues['secondary_target']) > 0
+                                  ? 'border-emerald-300 bg-emerald-50'
+                                  : 'border-slate-200 bg-slate-100'
+                                  } flex items-center`}>
+                                  <span className={`text-xl font-black ${Number(subValues['secondary_target']) > 0
+                                    ? 'text-emerald-600'
+                                    : 'text-slate-400'
+                                    }`}>
+                                    {Number(subValues['secondary_target']) > 0 && subValues['secondary_attending'] !== undefined
+                                      ? ((Number(subValues['secondary_attending']) / Number(subValues['secondary_target'])) * 100).toFixed(1)
+                                      : '0.0'}%
+                                  </span>
+                                </div>
+                                <p className="text-[9px] text-emerald-600 font-bold">Auto-calculated</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* TVET */}
+                          <div className="space-y-2 bg-white p-4 rounded-lg border border-green-100">
+                            <h5 className="text-xs font-black text-green-700 uppercase tracking-wider flex items-center gap-2">
+                              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                              TVET Attendance
+                            </h5>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold text-green-700 uppercase tracking-wider">
+                                  Target Students
+                                </label>
+                                <input
+                                  type="number"
+                                  value={subValues['tvet_target'] ?? ''}
+                                  onChange={(e) => handleSubValueChange('tvet_target', e.target.value)}
+                                  placeholder="e.g. 1500"
+                                  className={`${inputClasses} placeholder:text-slate-300 bg-white`}
+                                  min="1"
+                                />
+                                <p className="text-[9px] text-slate-500">Total TVET students</p>
+                              </div>
+
+                              <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold text-green-700 uppercase tracking-wider">
+                                  Attending Students
+                                </label>
+                                <input
+                                  type="number"
+                                  value={subValues['tvet_attending'] ?? ''}
+                                  onChange={(e) => handleSubValueChange('tvet_attending', e.target.value)}
+                                  placeholder="e.g. 1450"
+                                  className={`${inputClasses} placeholder:text-slate-300 bg-white`}
+                                  min="0"
+                                />
+                                <p className="text-[9px] text-slate-500">Students attending</p>
+                              </div>
+
+                              <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
+                                  Attendance Rate
+                                </label>
+                                <div className={`h-12 px-4 rounded-xl border-2 ${Number(subValues['tvet_target']) > 0
+                                  ? 'border-emerald-300 bg-emerald-50'
+                                  : 'border-slate-200 bg-slate-100'
+                                  } flex items-center`}>
+                                  <span className={`text-xl font-black ${Number(subValues['tvet_target']) > 0
+                                    ? 'text-emerald-600'
+                                    : 'text-slate-400'
+                                    }`}>
+                                    {Number(subValues['tvet_target']) > 0 && subValues['tvet_attending'] !== undefined
+                                      ? ((Number(subValues['tvet_attending']) / Number(subValues['tvet_target'])) * 100).toFixed(1)
+                                      : '0.0'}%
+                                  </span>
+                                </div>
+                                <p className="text-[9px] text-emerald-600 font-bold">Auto-calculated</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Overall Average */}
+                        <div className="mt-4 p-3 bg-white/70 rounded-lg border border-green-200">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[10px] font-bold text-green-700 uppercase">Overall Attendance Rate:</span>
+                            <span className="text-lg font-black text-green-600">
+                              {subValues['primary_target'] && subValues['primary_attending'] &&
+                               subValues['secondary_target'] && subValues['secondary_attending'] &&
+                               subValues['tvet_target'] && subValues['tvet_attending']
+                                ? (
+                                    (
+                                      (Number(subValues['primary_attending']) / Number(subValues['primary_target'])) * 100 +
+                                      (Number(subValues['secondary_attending']) / Number(subValues['secondary_target'])) * 100 +
+                                      (Number(subValues['tvet_attending']) / Number(subValues['tvet_target'])) * 100
+                                    ) / 3
+                                  ).toFixed(1)
+                                : '0.0'}%
+                            </span>
+                          </div>
+                          <p className="text-[9px] text-slate-500">
+                            Average attendance rate across Primary, Secondary, and TVET
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Marriage and Divorce Indicator - Complex Calculation */}
+                    {indicatorId === '132' && (
+                      <div className="space-y-6 bg-gradient-to-br from-purple-50 to-indigo-50 p-5 rounded-xl border-2 border-purple-200">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v11.494m-9-5.747h18" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v11.494m-9-5.747h18" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v11.494m-9-5.747h18" />
+                          </svg>
+                          <h4 className="font-bold text-purple-800 text-sm">Marriage & Divorce Recording - Dual Calculation</h4>
+                        </div>
+
+                        <div className="space-y-4">
+                          {/* Marriage */}
+                          <div className="space-y-2 bg-white p-4 rounded-lg border border-purple-100">
+                            <h5 className="text-xs font-black text-purple-700 uppercase tracking-wider flex items-center gap-2">
+                              <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                              Marriage Events
+                            </h5>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold text-purple-700 uppercase tracking-wider">
+                                  Target Events
+                                </label>
+                                <input
+                                  type="number"
+                                  value={subValues['marriage_target'] ?? ''}
+                                  onChange={(e) => handleSubValueChange('marriage_target', e.target.value)}
+                                  placeholder="e.g. 500"
+                                  className={`${inputClasses} placeholder:text-slate-300 bg-white`}
+                                  min="1"
+                                />
+                                <p className="text-[9px] text-slate-500">Total marriage events</p>
+                              </div>
+
+                              <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold text-purple-700 uppercase tracking-wider">
+                                  Recorded Events
+                                </label>
+                                <input
+                                  type="number"
+                                  value={subValues['marriage_recorded'] ?? ''}
+                                  onChange={(e) => handleSubValueChange('marriage_recorded', e.target.value)}
+                                  placeholder="e.g. 480"
+                                  className={`${inputClasses} placeholder:text-slate-300 bg-white`}
+                                  min="0"
+                                />
+                                <p className="text-[9px] text-slate-500">Events recorded</p>
+                              </div>
+
+                              <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
+                                  Recording Rate
+                                </label>
+                                <div className={`h-12 px-4 rounded-xl border-2 ${Number(subValues['marriage_target']) > 0
+                                  ? 'border-emerald-300 bg-emerald-50'
+                                  : 'border-slate-200 bg-slate-100'
+                                  } flex items-center`}>
+                                  <span className={`text-xl font-black ${Number(subValues['marriage_target']) > 0
+                                    ? 'text-emerald-600'
+                                    : 'text-slate-400'
+                                    }`}>
+                                    {Number(subValues['marriage_target']) > 0 && subValues['marriage_recorded'] !== undefined
+                                      ? ((Number(subValues['marriage_recorded']) / Number(subValues['marriage_target'])) * 100).toFixed(1)
+                                      : '0.0'}%
+                                  </span>
+                                </div>
+                                <p className="text-[9px] text-emerald-600 font-bold">Auto-calculated</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Divorce */}
+                          <div className="space-y-2 bg-white p-4 rounded-lg border border-purple-100">
+                            <h5 className="text-xs font-black text-purple-700 uppercase tracking-wider flex items-center gap-2">
+                              <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                              Divorce Events
+                            </h5>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold text-purple-700 uppercase tracking-wider">
+                                  Target Events
+                                </label>
+                                <input
+                                  type="number"
+                                  value={subValues['divorce_target'] ?? ''}
+                                  onChange={(e) => handleSubValueChange('divorce_target', e.target.value)}
+                                  placeholder="e.g. 100"
+                                  className={`${inputClasses} placeholder:text-slate-300 bg-white`}
+                                  min="1"
+                                />
+                                <p className="text-[9px] text-slate-500">Total divorce events</p>
+                              </div>
+
+                              <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold text-purple-700 uppercase tracking-wider">
+                                  Recorded Events
+                                </label>
+                                <input
+                                  type="number"
+                                  value={subValues['divorce_recorded'] ?? ''}
+                                  onChange={(e) => handleSubValueChange('divorce_recorded', e.target.value)}
+                                  placeholder="e.g. 95"
+                                  className={`${inputClasses} placeholder:text-slate-300 bg-white`}
+                                  min="0"
+                                />
+                                <p className="text-[9px] text-slate-500">Events recorded</p>
+                              </div>
+
+                              <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
+                                  Recording Rate
+                                </label>
+                                <div className={`h-12 px-4 rounded-xl border-2 ${Number(subValues['divorce_target']) > 0
+                                  ? 'border-emerald-300 bg-emerald-50'
+                                  : 'border-slate-200 bg-slate-100'
+                                  } flex items-center`}>
+                                  <span className={`text-xl font-black ${Number(subValues['divorce_target']) > 0
+                                    ? 'text-emerald-600'
+                                    : 'text-slate-400'
+                                    }`}>
+                                    {Number(subValues['divorce_target']) > 0 && subValues['divorce_recorded'] !== undefined
+                                      ? ((Number(subValues['divorce_recorded']) / Number(subValues['divorce_target'])) * 100).toFixed(1)
+                                      : '0.0'}%
+                                  </span>
+                                </div>
+                                <p className="text-[9px] text-emerald-600 font-bold">Auto-calculated</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Overall Average */}
+                        <div className="mt-4 p-3 bg-white/70 rounded-lg border border-purple-200">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[10px] font-bold text-purple-700 uppercase">Overall Recording Rate:</span>
+                            <span className="text-lg font-black text-purple-600">
+                              {subValues['marriage_target'] && subValues['marriage_recorded'] &&
+                               subValues['divorce_target'] && subValues['divorce_recorded']
+                                ? (
+                                    (
+                                      (Number(subValues['marriage_recorded']) / Number(subValues['marriage_target'])) * 100 +
+                                      (Number(subValues['divorce_recorded']) / Number(subValues['divorce_target'])) * 100
+                                    ) / 2
+                                  ).toFixed(1)
+                                : '0.0'}%
+                            </span>
+                          </div>
+                          <p className="text-[9px] text-slate-500">
+                            Average recording rate across Marriage and Divorce events
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Generic Percentage Calculation for other percentage indicators */}
+                    {selectedIndicator?.measurementType === 'percentage' &&
+                      !['74', '83', '87', '88', '101', '132', '69', '99'].includes(indicatorId) && (
                       <div className="space-y-4 bg-gradient-to-br from-blue-50 to-indigo-50 p-5 rounded-xl border-2 border-blue-200">
                         <div className="flex items-center space-x-2 mb-2">
                           <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

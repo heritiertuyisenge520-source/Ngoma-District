@@ -115,9 +115,10 @@ const App: React.FC = () => {
       />
 
       {/* FIX 1: added w-full here to ensure the container stretches.
-        FIX 2: md:pl-64 pushes content right.
+        FIX 2: md:pl-64 pushes content right to accommodate sidebar.
+        FIX 3: overflow-hidden prevents content from scrolling under sidebar.
       */}
-      <div className="flex-1 flex flex-col min-w-0 md:pl-64 w-full transition-all duration-300">
+      <div className="flex-1 flex flex-col min-w-0 md:pl-64 w-full transition-all duration-300 overflow-hidden">
 
         <header className="h-16 w-full bg-white border-b border-slate-200 flex-shrink-0">
           <Navbar user={user} onMenuClick={() => setIsSidebarOpen(true)} />
