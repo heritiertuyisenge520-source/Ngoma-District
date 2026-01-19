@@ -174,11 +174,24 @@ const ProgressCalculatorView: React.FC<ProgressCalculatorViewProps> = ({ entries
             };
         }
         return {
-            title: 'Standard Cumulative Formula',
-            math: '(Sum of Monthly Inputs / Sum of Fixed Targets) × 100',
-            desc: 'Inputs and targets are summed cumulatively from Q1 up to the current quarter.'
+            title: 'Standard Formula (Recalibrated)',
+            math: '(Input / Target) × 100',
+            desc: 'Uses input directly with target up to the current quarter. July, August, September all use Q1 target; October, November, December use Q1+Q2 targets, etc.'
         };
     }, [selectedIndicator, isAnnual, hasSubIndicators]);
+<task_progress>
+- [x] Examine progress calculation utilities
+- [x] Check formula implementations
+- [x] Understand what needs recalibration
+- [x] Get clarification on specific recalibration requirements
+- [x] Confirm formula logic with user
+- [x] Check indicator data structure
+- [x] Create implementation plan
+- [x] Implement formula recalibration
+- [x] Update monthly progress calculation
+- [x] Update quarter progress calculation
+- [ ] Update ProgressCalculatorView display
+</task_progress>
 
     const inputClasses = "w-full p-3 rounded-xl border-2 border-slate-200 bg-white text-slate-900 text-sm font-semibold focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none appearance-none cursor-pointer";
 

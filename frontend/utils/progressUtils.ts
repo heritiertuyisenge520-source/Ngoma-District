@@ -1,4 +1,3 @@
-
 // Utility to clean strings (e.g. "80%" -> 80, "1,000" -> 1000)
 export const parseValue = (val: string | number | undefined): number => {
     if (val === undefined || val === null || val === '-') return 0;
@@ -26,45 +25,28 @@ export const calculateQuarterProgress = ({ indicator, entries, quarterId, months
     // Filter entries by quarterId
     const quarterEntries = entries.filter(e => e.quarterId === quarterId);
 
-    // For standard cumulative, we sum the actuals of the months (e.g. Jan + Feb + Mar)
-    // For percentage, usually we might average them OR take the latest? 
-    // README says: "on january we took input in january divide... on february we took input in february"
-    // This implies the 'progress' is calculated PER MONTH, and then maybe displayed per month on the graph.
-    // But for the "Quarter Health Score" (the big circle), we need a single value.
-    // README says: "become the progress of the quarter".
-    // Let's assume for the Quarter Score, we take the sum of actuals (for numeric) or the average/latest for percentage?
-    // Actually, the README says for cumulative: "input of month / fixed target".
-    // So for the whole quarter, it's likely (Sum of Month Actuals) / (Target).
-
-    // Let's stick to the README's monthly logic for the graph, and for the Quarter Score:
-    // Cumulative: Sum of entries / Target
-    // Percentage: Average of entries / Target (OR Sum if text implies it? README says "percentage... calculated progress of month")
+    // For cumulative indicators, we use the LATEST cumulative value directly (no summing)
+    // For percentage indicators, we take the average of the monthly percentages
+    // The README confirms: "input of month / fixed target" - each month's input is cumulative
 
     let totalActual = 0;
     if (isPercentage) {
-        // If it's percentage, summing 20% + 30% = 50% might be wrong if they are independent.
-        // But usually, inputs like "2000/10000" result in a % for that month.
-        // Let's Sum them for now if they are "achievements" contributed.
-        // WAIT. README says: "20%... used to calculate progress... 20/40*100 = 50%".
-        // If Apr=20%, May=30%, Jun=40%. Quarter Progress? 
-        // It's ambiguous. Let's start with Sum for standard, and for Percentage identifiers we might need careful handling.
-        // However, usually in these systems, "Actual" is cumulative for the quarter in the DB? 
-        // No, DB stores monthly. 
-
-        // Let's treat "totalActual" as the SUM of the monthly values for now, as that fits "Cumulative".
-        totalActual = quarterEntries.reduce((acc, curr) => acc + curr.value, 0);
+        // For percentage indicators, average the monthly percentages
+        if (quarterEntries.length > 0) {
+            totalActual = quarterEntries.reduce((acc, curr) => acc + curr.value, 0) / quarterEntries.length;
+        }
+    } else if (isCumulative) {
+        // For cumulative indicators, use the latest (highest) cumulative value directly
+        // This prevents double-counting since user inputs are already cumulative
+        if (quarterEntries.length > 0) {
+            totalActual = Math.max(...quarterEntries.map(e => e.value));
+        }
     } else {
+        // For other types, sum the values
         totalActual = quarterEntries.reduce((acc, curr) => acc + curr.value, 0);
     }
 
-
-    // 2. Determine the Denominator (Target)
-    // README:
-    // Q1: Target Q1
-    // Q2: Target Q1 + Target Q2
-    // Q3: Q1 + Q2 + Q3
-    // Q4: Q1 + Q2 + Q3 + Q4 (which is Annual)
-
+    // 2. Determine the Denominator (Target) - UPDATED TO MATCH USER REQUIREMENTS
     let targetDenominator = 0;
 
     const t1 = parseValue(indicator.targets.q1);
@@ -73,17 +55,22 @@ export const calculateQuarterProgress = ({ indicator, entries, quarterId, months
     const t4 = parseValue(indicator.targets.q4);
 
     if (isPercentage || isDecreasing) {
-        // README: "fixed target in quarter 1 is 40%... progress of july = result / 40% * 100"
-        // "so another thing to consider is on quarter we dont add the percentages of the quarters... as we did it on numbers"
-        // THIS IS KEY. For percentages, we DO NOT sum Q1+Q2. We just use the current quarter's target.
+        // For percentage indicators, use current quarter target only (no summing)
+        // This matches user requirement: "For the indicator with fixed quarterly targets which are in percentage,
+        // we do not make the sum of the fixed targets to get the denominator"
         switch (quarterId) {
             case 'q1': targetDenominator = t1; break;
-            case 'q2': targetDenominator = t2; break; // NOT t1+t2
+            case 'q2': targetDenominator = t2; break;
             case 'q3': targetDenominator = t3; break;
             case 'q4': targetDenominator = t4; break;
         }
     } else {
-        // Standard Cumulative Logic (Summing Targets)
+        // Standard Cumulative Logic (Summing Targets) - UPDATED TO MATCH USER REQUIREMENTS
+        // User specified exact monthly calculation rules:
+        // July, Aug, Sep: use Q1 target
+        // Oct, Nov, Dec: use Q1 + Q2 targets
+        // Jan, Feb, Mar: use Q1 + Q2 + Q3 targets
+        // Apr, May, Jun: use Q1 + Q2 + Q3 + Q4 targets
         switch (quarterId) {
             case 'q1':
                 targetDenominator = t1;
@@ -103,7 +90,7 @@ export const calculateQuarterProgress = ({ indicator, entries, quarterId, months
     // Guard against division by zero
     if (targetDenominator === 0) targetDenominator = 1;
 
-    // 3. Calculate Performance
+    // 3. Calculate Performance - UPDATED TO MATCH USER REQUIREMENTS
     let performance = 0;
     let subIndicatorDetails: any[] = [];
 
@@ -151,6 +138,7 @@ export const calculateQuarterProgress = ({ indicator, entries, quarterId, months
                 const st4 = parseValue(subIndicator.targets.q4);
 
                 if (subIndicator.measurementType === 'percentage' || subIndicator.measurementType === 'decreasing') {
+                    // For percentage sub-indicators, use current quarter target only
                     switch (quarterId) {
                         case 'q1': subTarget = st1; break;
                         case 'q2': subTarget = st2; break;
@@ -158,6 +146,7 @@ export const calculateQuarterProgress = ({ indicator, entries, quarterId, months
                         case 'q4': subTarget = st4; break;
                     }
                 } else {
+                    // For numeric sub-indicators, use cumulative targets
                     switch (quarterId) {
                         case 'q1': subTarget = st1; break;
                         case 'q2': subTarget = st1 + st2; break;
@@ -171,6 +160,7 @@ export const calculateQuarterProgress = ({ indicator, entries, quarterId, months
                 if (subTarget > 0) {
                     subPerf = (subActual / subTarget) * 100;
                     if (subIndicator.measurementType === 'decreasing') {
+                        // For decreasing indicators, invert the calculation: target / actual
                         subPerf = subActual > 0 ? (subTarget / subActual) * 100 : 100;
                     }
                 } else if (subActual > 0) {
@@ -184,29 +174,29 @@ export const calculateQuarterProgress = ({ indicator, entries, quarterId, months
                     name: subIndicator.name,
                     actual: subActual,
                     target: subTarget,
-                    performance: Math.min(subPerf, 100)
+                    performance: Math.min(subPerf, 100) // Ensure no progress exceeds 100%
                 });
             }
         });
 
         if (subIndicatorDetails.length > 0) {
-            // Only average sub-indicators that have targets for proper calculation
-            const subsWithTargets = subIndicatorDetails.filter(s => s.target > 0);
-            if (subsWithTargets.length > 0) {
-                performance = subsWithTargets.reduce((a, b) => a + b.performance, 0) / subsWithTargets.length;
-            } else {
-                // If no sub-indicators have targets, use the fallback
-                performance = totalActual > 0 ? 100 : 0;
-            }
+            // Calculate average of sub-indicator performances
+            // This matches user requirement: "use the progress of each sub indicator to calculate the average progress"
+            const averageSubPerformance = subIndicatorDetails.reduce((sum, sub) => sum + sub.performance, 0) / subIndicatorDetails.length;
+            performance = averageSubPerformance;
         } else {
             performance = (totalActual / targetDenominator) * 100;
         }
     } else {
         performance = (totalActual / targetDenominator) * 100;
         if (isDecreasing) {
+            // For decreasing indicators, invert the calculation: target / actual
             performance = totalActual > 0 ? (targetDenominator / totalActual) * 100 : 100;
         }
     }
+
+    // Ensure no progress exceeds 100% - IMPORTANT REQUIREMENT
+    performance = Math.min(performance, 100);
 
     // Determine Trend (Where you are going)
     const nextQuarterId = quarterId === 'q1' ? 'q2' : quarterId === 'q2' ? 'q3' : quarterId === 'q3' ? 'q4' : 'q4';
@@ -215,7 +205,7 @@ export const calculateQuarterProgress = ({ indicator, entries, quarterId, months
     return {
         totalActual,
         target: targetDenominator,
-        performance: Math.min(performance, 100),
+        performance: performance, // Already capped at 100
         trend: performance >= 90 ? 'on-track' : performance >= 50 ? 'improving' : 'needs-attention',
         nextTarget,
         subIndicatorDetails
@@ -273,22 +263,37 @@ export const calculateAnnualProgress = (indicator: Indicator, entries: any[]) =>
         }
     }
 
-    const totalActual = indicatorEntries.reduce((acc, curr) => acc + curr.value, 0);
+    // For cumulative indicators, use the latest cumulative value directly
+    // For other types, sum the values
+    const isPercentage = indicator.measurementType === 'percentage';
+    const isDecreasing = indicator.measurementType === 'decreasing';
+    const isCumulative = !isPercentage && !isDecreasing && !indicator.subIndicatorIds;
+
+    let totalActual = 0;
+    if (isCumulative && indicatorEntries.length > 0) {
+        // For cumulative indicators, use the latest (highest) cumulative value directly
+        totalActual = Math.max(...indicatorEntries.map(e => e.value));
+    } else {
+        // For other types, sum the values
+        totalActual = indicatorEntries.reduce((acc, curr) => acc + curr.value, 0);
+    }
+
     const annualTarget = parseValue(indicator.targets.annual);
 
     if (annualTarget === 0) return 0;
 
     let performance = (totalActual / annualTarget) * 100;
-    if (indicator.measurementType === 'decreasing') {
+    if (isDecreasing) {
         performance = totalActual > 0 ? (annualTarget / totalActual) * 100 : 100;
     }
 
     return Math.min(performance, 100);
 };
 
-export const calculateMonthlyProgress = (indicator: Indicator, value: number, quarterId: string, itemEntries?: any[]) => {
+export const calculateMonthlyProgress = (indicator: Indicator, value: number, month: string, itemEntries?: any[]) => {
     const isPercentage = indicator.measurementType === 'percentage';
     const isDecreasing = indicator.measurementType === 'decreasing';
+    const isStandardCumulative = !isPercentage && !isDecreasing && !indicator.subIndicatorIds;
 
     // Handle Merged Indicators for Monthly View
     if (indicator.subIndicatorIds && itemEntries) {
@@ -298,8 +303,8 @@ export const calculateMonthlyProgress = (indicator: Indicator, value: number, qu
         Object.entries(subMapping).forEach(([key, subId]) => {
             const subIndicator = INDICATORS.find(i => i.id === subId);
             if (subIndicator) {
-                const subActual = value; // This is actually the subValue for this key? 
-                // Wait, the 'value' passed here is usually the main value. 
+                const subActual = value; // This is actually the subValue for this key?
+                // Wait, the 'value' passed here is usually the main value.
                 // For monthly charts, we might need the specific entry.
                 // Let's assume the calling code passes the sub-values.
             }
@@ -314,25 +319,72 @@ export const calculateMonthlyProgress = (indicator: Indicator, value: number, qu
 
     let targetDenominator = 0;
 
+    // UPDATED TO MATCH USER'S EXACT MONTHLY REQUIREMENTS:
+    // July, Aug, Sep: use Q1 target
+    // Oct, Nov, Dec: use Q1 + Q2 targets
+    // Jan, Feb, Mar: use Q1 + Q2 + Q3 targets
+    // Apr, May, Jun: use Q1 + Q2 + Q3 + Q4 targets
+
     if (isPercentage || isDecreasing) {
+        // For percentage indicators, use current quarter target only
+        // This matches user requirement: "For the indicator with fixed quarterly targets which are in percentage,
+        // we do not make the sum of the fixed targets to get the denominator"
+        const monthToQuarter: Record<string, string> = {
+            'Jul': 'q1', 'Aug': 'q1', 'Sep': 'q1',
+            'Oct': 'q2', 'Nov': 'q2', 'Dec': 'q2',
+            'Jan': 'q3', 'Feb': 'q3', 'Mar': 'q3',
+            'Apr': 'q4', 'May': 'q4', 'Jun': 'q4'
+        };
+
+        const quarterId = monthToQuarter[month] || 'q1';
+
         switch (quarterId) {
             case 'q1': targetDenominator = t1; break;
             case 'q2': targetDenominator = t2; break;
             case 'q3': targetDenominator = t3; break;
             case 'q4': targetDenominator = t4; break;
         }
+    } else if (isStandardCumulative) {
+        // UPDATED: Standard cumulative indicators use exact monthly denominator rules
+        const monthToDenominator: Record<string, number> = {
+            'Jul': t1,
+            'Aug': t1,
+            'Sep': t1,
+            'Oct': t1 + t2,
+            'Nov': t1 + t2,
+            'Dec': t1 + t2,
+            'Jan': t1 + t2 + t3,
+            'Feb': t1 + t2 + t3,
+            'Mar': t1 + t2 + t3,
+            'Apr': t1 + t2 + t3 + t4,
+            'May': t1 + t2 + t3 + t4,
+            'Jun': t1 + t2 + t3 + t4
+        };
+
+        targetDenominator = monthToDenominator[month] || t1;
     } else {
+        // Composite indicators - use current quarter target
+        const monthToQuarter: Record<string, string> = {
+            'Jul': 'q1', 'Aug': 'q1', 'Sep': 'q1',
+            'Oct': 'q2', 'Nov': 'q2', 'Dec': 'q2',
+            'Jan': 'q3', 'Feb': 'q3', 'Mar': 'q3',
+            'Apr': 'q4', 'May': 'q4', 'Jun': 'q4'
+        };
+
+        const quarterId = monthToQuarter[month] || 'q1';
+
         switch (quarterId) {
             case 'q1': targetDenominator = t1; break;
-            case 'q2': targetDenominator = t1 + t2; break;
-            case 'q3': targetDenominator = t1 + t2 + t3; break;
-            case 'q4': targetDenominator = t1 + t2 + t3 + t4; break;
+            case 'q2': targetDenominator = t2; break;
+            case 'q3': targetDenominator = t3; break;
+            case 'q4': targetDenominator = t4; break;
         }
     }
 
     if (targetDenominator === 0) return 0;
 
     if (isDecreasing) {
+        // For decreasing indicators, invert the calculation: target / actual
         return Math.min(value ? (targetDenominator / value) * 100 : 0, 100);
     }
 

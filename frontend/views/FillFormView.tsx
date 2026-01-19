@@ -1995,11 +1995,18 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                     <input
                       type="number"
                       value={achievementValue}
-                      onChange={(e) => setAchievementValue(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Ensure input is 0 or greater as per user requirement
+                        if (value === '' || Number(value) >= 0) {
+                          setAchievementValue(value);
+                        }
+                      }}
                       placeholder="e.g. 500"
                       className={`${inputClasses} placeholder:text-slate-300 placeholder:font-normal`}
                       disabled={!indicatorId}
                       required
+                      min="0"
                     />
                   </div>
                 )}

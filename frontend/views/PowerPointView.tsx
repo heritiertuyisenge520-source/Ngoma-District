@@ -56,7 +56,7 @@ const PowerPointView: React.FC<PowerPointViewProps> = ({ entries }) => {
   const [draggingGraph, setDraggingGraph] = useState<string | null>(null);
   const slideRef = useRef<HTMLDivElement>(null);
 
-  // Calculate real pillar progress data
+  // Calculate real pillar progress data with proper indicator exclusion
   const pillarProgressData = useMemo(() => {
     const data: Record<string, { q1: number; q2: number; q3: number; q4: number }> = {};
 
@@ -64,11 +64,48 @@ const PowerPointView: React.FC<PowerPointViewProps> = ({ entries }) => {
       const pillarIndicators = pillar.outputs.flatMap(o => o.indicators || []);
       const qData = { q1: 0, q2: 0, q3: 0, q4: 0 };
 
-      QUARTERS.forEach(quarter => {
-        let totalPerf = 0;
-        let count = 0;
+      // Step 1: Identify indicators with NO targets in ANY quarter (exclude from all calculations)
+      const indicatorsWithNoTargets = pillarIndicators.filter(indicator => {
+        return Object.values(indicator.targets).every(t =>
+          t === 0 || t === '-' || t === undefined || t === null || t === ''
+        );
+      });
 
-        pillarIndicators.forEach(indicator => {
+      QUARTERS.forEach(quarter => {
+        // Step 2: Identify indicators to exclude for this specific quarter
+        // Q1: exclude if no Q1 target
+        // Q2: exclude if no Q1+Q2 targets
+        // Q3: exclude if no Q1+Q2+Q3 targets
+        // Q4: exclude if no Q1+Q2+Q3+Q4 targets
+        const indicatorsToExclude = pillarIndicators.filter(indicator => {
+          if (indicatorsWithNoTargets.includes(indicator)) return true;
+
+          const relevantTargets = {
+            q1: indicator.targets.q1,
+            q2: quarter.id === 'q2' ? indicator.targets.q2 : null,
+            q3: quarter.id === 'q3' ? indicator.targets.q3 : null,
+            q4: quarter.id === 'q4' ? indicator.targets.q4 : null
+          };
+
+          // Check if ALL relevant targets are empty/zero
+          return Object.values(relevantTargets).every(t =>
+            t === 0 || t === '-' || t === undefined || t === null || t === ''
+          );
+        });
+
+        // Step 3: Calculate progress only for indicators WITH targets
+        const validIndicators = pillarIndicators.filter(ind =>
+          !indicatorsToExclude.includes(ind) &&
+          !indicatorsWithNoTargets.includes(ind)
+        );
+
+        if (validIndicators.length === 0) {
+          (qData as any)[quarter.id] = 0;
+          return;
+        }
+
+        let totalPerf = 0;
+        validIndicators.forEach(indicator => {
           const indicatorEntries = entries.filter(e => e.indicatorId === indicator.id);
           if (indicatorEntries.length > 0) {
             const result = calculateQuarterProgress({
@@ -78,14 +115,77 @@ const PowerPointView: React.FC<PowerPointViewProps> = ({ entries }) => {
               monthsInQuarter: quarter.months
             });
             totalPerf += Math.min(result.performance, 100);
-            count++;
           }
         });
 
-        (qData as any)[quarter.id] = count > 0 ? Math.round(totalPerf / count) : 0;
+        // Step 4: Average only the valid indicators
+        (qData as any)[quarter.id] = Math.round(totalPerf / validIndicators.length);
       });
 
       data[pillar.id] = qData;
+    });
+
+    return data;
+  }, [entries]);
+
+  // Calculate annual progress with cumulative denominator approach
+  const annualProgressData = useMemo(() => {
+    const data: Record<string, { q1: number; q2: number; q3: number; q4: number }> = {};
+
+    PILLARS.forEach(pillar => {
+      const pillarIndicators = pillar.outputs.flatMap(o => o.indicators || []);
+      const annualData = { q1: 0, q2: 0, q3: 0, q4: 0 };
+
+      // Get indicators with NO targets in ANY quarter (exclude from all calculations)
+      const indicatorsWithNoTargets = pillarIndicators.filter(indicator => {
+        return Object.values(indicator.targets).every(t =>
+          t === 0 || t === '-' || t === undefined || t === null || t === ''
+        );
+      });
+
+      QUARTERS.forEach(quarter => {
+        // For annual: cumulative inclusion (expanding denominator)
+        // Q1: indicators with Q1 targets only
+        // Q2: indicators with Q1 OR Q2 targets (cumulative)
+        // Q3: indicators with Q1 OR Q2 OR Q3 targets (cumulative)
+        // Q4: indicators with Q1 OR Q2 OR Q3 OR Q4 targets (full cumulative)
+
+        const quarterIndex = QUARTERS.indexOf(quarter);
+        const relevantQuarters = ['q1', 'q2', 'q3', 'q4'].slice(0, quarterIndex + 1);
+
+        const cumulativeIndicators = pillarIndicators.filter(indicator => {
+          if (indicatorsWithNoTargets.includes(indicator)) return false;
+
+          // Check if indicator has ANY target in the relevant quarters
+          return relevantQuarters.some(q =>
+            indicator.targets[q] && indicator.targets[q] !== 0 && indicator.targets[q] !== '-'
+          );
+        });
+
+        if (cumulativeIndicators.length === 0) {
+          (annualData as any)[quarter.id] = 0;
+          return;
+        }
+
+        let totalPerf = 0;
+        cumulativeIndicators.forEach(indicator => {
+          const indicatorEntries = entries.filter(e => e.indicatorId === indicator.id);
+          if (indicatorEntries.length > 0) {
+            const result = calculateQuarterProgress({
+              indicator,
+              entries: indicatorEntries,
+              quarterId: quarter.id,
+              monthsInQuarter: quarter.months
+            });
+            totalPerf += Math.min(result.performance, 100);
+          }
+        });
+
+        // Calculate average of cumulative indicators
+        (annualData as any)[quarter.id] = Math.round(totalPerf / cumulativeIndicators.length);
+      });
+
+      data[pillar.id] = annualData;
     });
 
     return data;

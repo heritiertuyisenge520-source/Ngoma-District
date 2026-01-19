@@ -1,6 +1,6 @@
 import express from 'express';
 import { SubmissionModel, EntryModel } from '../models';
-import { authenticate } from '../middleware/auth';
+import { authenticate, authorize } from '../middleware/auth';
 
 const router = express.Router();
 
@@ -63,7 +63,7 @@ router.post('/', async (req, res) => {
 });
 
 // Update a submission
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticate, authorize(['super_admin']), async (req, res) => {
     try {
         const submission = await SubmissionModel.findByIdAndUpdate(
             req.params.id,
@@ -80,7 +80,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Delete a submission
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticate, authorize(['super_admin']), async (req, res) => {
     try {
         const submission = await SubmissionModel.findByIdAndDelete(req.params.id);
         if (!submission) {

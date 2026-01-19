@@ -1,6 +1,6 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
-import { UserModel, IndicatorAssignmentModel, DataChangeRequestModel, SubmissionPeriodModel, SubmissionModel, UNITS } from '../models';
+import { UserModel, IndicatorAssignmentModel, DataChangeRequestModel, DataDeleteRequestModel, SubmissionPeriodModel, SubmissionModel, UNITS } from '../models';
 import { generateAuthToken } from '../middleware/auth';
 
 const router = express.Router();
@@ -503,6 +503,127 @@ router.get('/my-change-requests/:email', async (req, res) => {
     } catch (error) {
         console.error('Error fetching user change requests:', error);
         res.status(500).json({ message: 'Error fetching change requests' });
+    }
+});
+
+// ============ DATA DELETE REQUEST ROUTES ============
+
+// Create a data delete request (employee wants to delete submission)
+router.post('/data-delete-request', async (req, res) => {
+    try {
+        const {
+            submissionId, requestedBy, requestedByName, indicatorId, indicatorName,
+            pillarName, quarterId, month, oldValue, oldSubValues, oldComments, unit
+        } = req.body;
+
+        const request = new DataDeleteRequestModel({
+            submissionId, requestedBy, requestedByName, indicatorId, indicatorName,
+            pillarName, quarterId, month, oldValue, oldSubValues, oldComments, unit, status: 'pending'
+        });
+
+        await request.save();
+
+        res.status(201).json({
+            message: 'Your delete request has been submitted. Please wait for the Head of Unit to approve the deletion.',
+            request
+        });
+    } catch (error) {
+        console.error('Error creating data delete request:', error);
+        res.status(500).json({ message: 'Error submitting delete request' });
+    }
+});
+
+// Get pending delete requests for a unit (head of unit)
+router.get('/data-delete-requests/:unit', async (req, res) => {
+    try {
+        const { unit } = req.params;
+        const { status } = req.query;
+
+        const query: any = { unit };
+        if (status) {
+            query.status = status;
+        }
+
+        const requests = await DataDeleteRequestModel.find(query).sort({ createdAt: -1 });
+        res.json(requests);
+    } catch (error) {
+        console.error('Error fetching delete requests:', error);
+        res.status(500).json({ message: 'Error fetching delete requests' });
+    }
+});
+
+// Approve a data delete request (head of unit)
+router.post('/approve-delete-request/:requestId', async (req, res) => {
+    try {
+        const { requestId } = req.params;
+        const { reviewedBy, reviewedByName, reviewComment } = req.body;
+
+        const request = await DataDeleteRequestModel.findById(requestId);
+        if (!request) {
+            return res.status(404).json({ message: 'Delete request not found' });
+        }
+
+        // Delete the actual submission
+        const submission = await SubmissionModel.findByIdAndDelete(request.submissionId);
+        if (!submission) {
+            return res.status(404).json({ message: 'Submission not found for deletion' });
+        }
+
+        // Update the delete request status
+        request.status = 'approved';
+        request.reviewedBy = reviewedBy;
+        request.reviewedByName = reviewedByName;
+        request.reviewedAt = new Date();
+        request.reviewComment = reviewComment || '';
+        await request.save();
+
+        res.json({
+            message: 'Delete request approved. The data has been removed from the database.',
+            request
+        });
+    } catch (error) {
+        console.error('Error approving delete request:', error);
+        res.status(500).json({ message: 'Error approving delete request' });
+    }
+});
+
+// Reject a data delete request (head of unit)
+router.post('/reject-delete-request/:requestId', async (req, res) => {
+    try {
+        const { requestId } = req.params;
+        const { reviewedBy, reviewedByName, reviewComment } = req.body;
+
+        const request = await DataDeleteRequestModel.findById(requestId);
+        if (!request) {
+            return res.status(404).json({ message: 'Delete request not found' });
+        }
+
+        request.status = 'rejected';
+        request.reviewedBy = reviewedBy;
+        request.reviewedByName = reviewedByName;
+        request.reviewedAt = new Date();
+        request.reviewComment = reviewComment || 'Request was rejected';
+        await request.save();
+
+        res.json({
+            message: 'Delete request rejected.',
+            request
+        });
+    } catch (error) {
+        console.error('Error rejecting delete request:', error);
+        res.status(500).json({ message: 'Error rejecting delete request' });
+    }
+});
+
+// Get user's own delete requests
+router.get('/my-delete-requests/:email', async (req, res) => {
+    try {
+        const { email } = req.params;
+        const requests = await DataDeleteRequestModel.find({ requestedBy: email }).sort({ createdAt: -1 });
+        res.json(requests);
+    } catch (error) {
+        console.error('Error fetching user delete requests:', error);
+        res.status(500).json({ message: 'Error fetching delete requests' });
     }
 });
 

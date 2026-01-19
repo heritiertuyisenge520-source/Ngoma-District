@@ -36,6 +36,13 @@ export const API_ENDPOINTS = {
     REJECT_CHANGE_REQUEST: `${API_BASE_URL}/api/auth/reject-change-request`,
     MY_CHANGE_REQUESTS: `${API_BASE_URL}/api/auth/my-change-requests`,
 
+    // Data delete request endpoints
+    DATA_DELETE_REQUEST: `${API_BASE_URL}/api/auth/data-delete-request`,
+    DATA_DELETE_REQUESTS: `${API_BASE_URL}/api/auth/data-delete-requests`,
+    APPROVE_DELETE_REQUEST: `${API_BASE_URL}/api/auth/approve-delete-request`,
+    REJECT_DELETE_REQUEST: `${API_BASE_URL}/api/auth/reject-delete-request`,
+    MY_DELETE_REQUESTS: `${API_BASE_URL}/api/auth/my-delete-requests`,
+
     // Submission period endpoints
     SUBMISSION_PERIOD_ACTIVE: `${API_BASE_URL}/api/auth/submission-period/active`,
     SUBMISSION_PERIOD_CURRENT: `${API_BASE_URL}/api/auth/submission-period/current`,
@@ -72,3 +79,7 @@ export const getUpdateUserUrl = (userId: string) => `${API_ENDPOINTS.UPDATE_USER
 export const getDeleteUserUrl = (userId: string) => `${API_ENDPOINTS.DELETE_USER}/${userId}`;
 export const getSubmissionPeriodUrl = (id: string) => `${API_ENDPOINTS.SUBMISSION_PERIOD}/${id}`;
 
+export const getDataDeleteRequestsUrl = (unit: string) => `${API_ENDPOINTS.DATA_DELETE_REQUESTS}/${encodeURIComponent(unit)}`;
+export const getApproveDeleteRequestUrl = (requestId: string) => `${API_ENDPOINTS.APPROVE_DELETE_REQUEST}/${requestId}`;
+export const getRejectDeleteRequestUrl = (requestId: string) => `${API_ENDPOINTS.REJECT_DELETE_REQUEST}/${requestId}`;
+export const getMyDeleteRequestsUrl = (email: string) => `${API_ENDPOINTS.MY_DELETE_REQUESTS}/${email}`;

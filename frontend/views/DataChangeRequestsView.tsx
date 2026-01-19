@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { API_ENDPOINTS, getDataChangeRequestsUrl, getApproveChangeRequestUrl, getRejectChangeRequestUrl } from '../config/api';
+import { API_ENDPOINTS, getDataChangeRequestsUrl, getDataDeleteRequestsUrl, getApproveChangeRequestUrl, getApproveDeleteRequestUrl, getRejectChangeRequestUrl, getRejectDeleteRequestUrl } from '../config/api';
 
 interface DataChangeRequest {
     _id: string;
@@ -18,6 +18,24 @@ interface DataChangeRequest {
     status: 'pending' | 'approved' | 'rejected';
     createdAt: string;
     reviewComment?: string;
+    requestType: 'edit' | 'delete';
+}
+
+interface DataDeleteRequest {
+    _id: string;
+    submissionId: string;
+    requestedBy: string;
+    requestedByName: string;
+    indicatorId: string;
+    indicatorName: string;
+    pillarName: string;
+    quarterId: string;
+    month: string;
+    oldValue: number;
+    oldComments?: string;
+    status: 'pending' | 'approved' | 'rejected';
+    createdAt: string;
+    reviewComment?: string;
 }
 
 interface DataChangeRequestsViewProps {
@@ -26,10 +44,11 @@ interface DataChangeRequestsViewProps {
         name: string;
         unit?: string;
     };
+    requestType?: 'edit' | 'delete';
 }
 
-const DataChangeRequestsView: React.FC<DataChangeRequestsViewProps> = ({ user }) => {
-    const [requests, setRequests] = useState<DataChangeRequest[]>([]);
+const DataChangeRequestsView: React.FC<DataChangeRequestsViewProps> = ({ user, requestType = 'edit' }) => {
+    const [requests, setRequests] = useState<(DataChangeRequest | DataDeleteRequest)[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
     const [reviewComment, setReviewComment] = useState('');
@@ -38,19 +57,24 @@ const DataChangeRequestsView: React.FC<DataChangeRequestsViewProps> = ({ user })
 
     useEffect(() => {
         fetchRequests();
-    }, [user.unit]);
+    }, [user.unit, requestType]);
 
     const fetchRequests = async () => {
         if (!user.unit) return;
         try {
             setLoading(true);
-            const response = await fetch(getDataChangeRequestsUrl(user.unit));
+            let response;
+            if (requestType === 'edit') {
+                response = await fetch(getDataChangeRequestsUrl(user.unit));
+            } else {
+                response = await fetch(getDataDeleteRequestsUrl(user.unit));
+            }
             if (response.ok) {
                 const data = await response.json();
                 setRequests(data);
             }
         } catch (error) {
-            console.error('Error fetching change requests:', error);
+            console.error(`Error fetching ${requestType} requests:`, error);
         } finally {
             setLoading(false);
         }
@@ -59,24 +83,37 @@ const DataChangeRequestsView: React.FC<DataChangeRequestsViewProps> = ({ user })
     const handleApprove = async (requestId: string) => {
         try {
             setProcessingId(requestId);
-            const response = await fetch(getApproveChangeRequestUrl(requestId), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    reviewedBy: user.email,
-                    reviewedByName: user.name,
-                    reviewComment
-                })
-            });
+            let response;
+            if (requestType === 'edit') {
+                response = await fetch(getApproveChangeRequestUrl(requestId), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        reviewedBy: user.email,
+                        reviewedByName: user.name,
+                        reviewComment
+                    })
+                });
+            } else {
+                response = await fetch(getApproveDeleteRequestUrl(requestId), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        reviewedBy: user.email,
+                        reviewedByName: user.name,
+                        reviewComment
+                    })
+                });
+            }
 
             if (response.ok) {
-                setSuccessMessage('Change request approved! The data has been updated in the database.');
+                setSuccessMessage(`${requestType === 'edit' ? 'Edit' : 'Delete'} request approved! The data has been ${requestType === 'edit' ? 'updated' : 'removed'} in the database.`);
                 fetchRequests();
                 setReviewComment('');
                 setTimeout(() => setSuccessMessage(''), 5000);
             }
         } catch (error) {
-            console.error('Error approving request:', error);
+            console.error(`Error approving ${requestType} request:`, error);
         } finally {
             setProcessingId(null);
         }
@@ -89,24 +126,37 @@ const DataChangeRequestsView: React.FC<DataChangeRequestsViewProps> = ({ user })
         }
         try {
             setProcessingId(requestId);
-            const response = await fetch(getRejectChangeRequestUrl(requestId), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    reviewedBy: user.email,
-                    reviewedByName: user.name,
-                    reviewComment
-                })
-            });
+            let response;
+            if (requestType === 'edit') {
+                response = await fetch(getRejectChangeRequestUrl(requestId), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        reviewedBy: user.email,
+                        reviewedByName: user.name,
+                        reviewComment
+                    })
+                });
+            } else {
+                response = await fetch(getRejectDeleteRequestUrl(requestId), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        reviewedBy: user.email,
+                        reviewedByName: user.name,
+                        reviewComment
+                    })
+                });
+            }
 
             if (response.ok) {
-                setSuccessMessage('Change request rejected.');
+                setSuccessMessage(`${requestType === 'edit' ? 'Edit' : 'Delete'} request rejected.`);
                 fetchRequests();
                 setReviewComment('');
                 setTimeout(() => setSuccessMessage(''), 5000);
             }
         } catch (error) {
-            console.error('Error rejecting request:', error);
+            console.error(`Error rejecting ${requestType} request:`, error);
         } finally {
             setProcessingId(null);
         }
@@ -133,9 +183,9 @@ const DataChangeRequestsView: React.FC<DataChangeRequestsViewProps> = ({ user })
             {/* Header */}
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900">Data Change Requests</h1>
+                    <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900">{requestType === 'edit' ? 'Data Change Requests' : 'Data Delete Requests'}</h1>
                     <p className="mt-1 text-sm text-slate-600 font-medium">
-                        Review and approve data modification requests from your team members.
+                        Review and approve data {requestType === 'edit' ? 'modification' : 'deletion'} requests from your team members.
                     </p>
                 </div>
                 {pendingCount > 0 && (
@@ -236,13 +286,15 @@ const DataChangeRequestsView: React.FC<DataChangeRequestsViewProps> = ({ user })
                                         <p className="text-xs text-red-500 font-medium">Old Value</p>
                                         <p className="font-bold text-red-600 text-lg">{request.oldValue.toLocaleString()}</p>
                                     </div>
-                                    <div className="bg-emerald-50 p-3 rounded-xl">
-                                        <p className="text-xs text-emerald-500 font-medium">New Value</p>
-                                        <p className="font-bold text-emerald-600 text-lg">{request.newValue.toLocaleString()}</p>
-                                    </div>
+                                    {requestType === 'edit' && (
+                                        <div className="bg-emerald-50 p-3 rounded-xl">
+                                            <p className="text-xs text-emerald-500 font-medium">New Value</p>
+                                            <p className="font-bold text-emerald-600 text-lg">{('newValue' in request) ? request.newValue.toLocaleString() : 'N/A'}</p>
+                                        </div>
+                                    )}
                                 </div>
 
-                                {request.newComments && (
+                                {requestType === 'edit' && request.newComments && (
                                     <div className="bg-blue-50 p-3 rounded-xl mb-4">
                                         <p className="text-xs text-blue-500 font-medium mb-1">Updated Comment</p>
                                         <p className="text-sm text-blue-700">{request.newComments}</p>
@@ -272,7 +324,7 @@ const DataChangeRequestsView: React.FC<DataChangeRequestsViewProps> = ({ user })
                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                                 </svg>
-                                                <span>Approve & Update Database</span>
+                                                <span>Approve & {requestType === 'edit' ? 'Update' : 'Delete'} Data</span>
                                             </button>
                                             <button
                                                 onClick={() => handleReject(request._id)}

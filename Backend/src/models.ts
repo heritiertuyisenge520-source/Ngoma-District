@@ -279,6 +279,29 @@ export interface IDataChangeRequest extends Document {
     reviewComment?: string;
     createdAt: Date;
     unit: string;
+    requestType: 'edit' | 'delete';
+}
+
+// Data Delete Request Interface - for employee delete approval workflow
+export interface IDataDeleteRequest extends Document {
+    submissionId: string;
+    requestedBy: string; // email of the employee
+    requestedByName: string;
+    indicatorId: string;
+    indicatorName: string;
+    pillarName: string;
+    quarterId: string;
+    month: string;
+    oldValue: number;
+    oldSubValues?: Record<string, number>;
+    oldComments?: string;
+    status: 'pending' | 'approved' | 'rejected';
+    reviewedBy?: string;
+    reviewedByName?: string;
+    reviewedAt?: Date;
+    reviewComment?: string;
+    createdAt: Date;
+    unit: string;
 }
 
 // Data Change Request Schema
@@ -303,7 +326,8 @@ const DataChangeRequestSchema = new Schema({
     reviewedAt: { type: Date },
     reviewComment: { type: String },
     createdAt: { type: Date, default: Date.now },
-    unit: { type: String, required: true }
+    unit: { type: String, required: true },
+    requestType: { type: String, enum: ['edit', 'delete'], default: 'edit' }
 });
 
 // Indexes for efficient queries
@@ -312,6 +336,35 @@ DataChangeRequestSchema.index({ requestedBy: 1 });
 DataChangeRequestSchema.index({ submissionId: 1 });
 
 export const DataChangeRequestModel = mongoose.model<IDataChangeRequest>('DataChangeRequest', DataChangeRequestSchema, 'DataChangeRequests');
+
+// Data Delete Request Schema
+const DataDeleteRequestSchema = new Schema({
+    submissionId: { type: String, required: true },
+    requestedBy: { type: String, required: true },
+    requestedByName: { type: String, required: true },
+    indicatorId: { type: String, required: true },
+    indicatorName: { type: String, required: true },
+    pillarName: { type: String, required: true },
+    quarterId: { type: String, required: true },
+    month: { type: String, required: true },
+    oldValue: { type: Number, required: true },
+    oldSubValues: { type: Schema.Types.Mixed },
+    oldComments: { type: String },
+    status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+    reviewedBy: { type: String },
+    reviewedByName: { type: String },
+    reviewedAt: { type: Date },
+    reviewComment: { type: String },
+    createdAt: { type: Date, default: Date.now },
+    unit: { type: String, required: true }
+});
+
+// Indexes for efficient queries
+DataDeleteRequestSchema.index({ status: 1, unit: 1 });
+DataDeleteRequestSchema.index({ requestedBy: 1 });
+DataDeleteRequestSchema.index({ submissionId: 1 });
+
+export const DataDeleteRequestModel = mongoose.model<IDataDeleteRequest>('DataDeleteRequest', DataDeleteRequestSchema, 'DataDeleteRequests');
 
 // Submission Period Interface - for admin to control submission window
 export interface ISubmissionPeriod extends Document {

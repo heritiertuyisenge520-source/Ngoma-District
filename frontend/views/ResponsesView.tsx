@@ -24,28 +24,40 @@ const ResponsesView: React.FC<ResponsesViewProps> = ({ entries, user, onEdit, on
     const [filterQuarter, setFilterQuarter] = useState<string>('all');
     const [filterPillar, setFilterPillar] = useState<string>('all');
 
-    // Edit request state for employees
-    const [showEditRequestModal, setShowEditRequestModal] = useState(false);
-    const [editingEntry, setEditingEntry] = useState<MonitoringEntry | null>(null);
-    const [newValue, setNewValue] = useState<string>('');
-    const [newComments, setNewComments] = useState<string>('');
-    const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
+// Edit request state for employees
+const [showEditRequestModal, setShowEditRequestModal] = useState(false);
+const [showDeleteRequestModal, setShowDeleteRequestModal] = useState(false);
+const [editingEntry, setEditingEntry] = useState<MonitoringEntry | null>(null);
+const [newValue, setNewValue] = useState<string>('');
+const [newComments, setNewComments] = useState<string>('');
+const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
+const [isSubmitting, setIsSubmitting] = useState(false);
 
     const isEmployee = user?.userType === 'employee';
 
-    const handleEditClick = (entry: MonitoringEntry) => {
-        if (isEmployee) {
-            // Employees must request edit through head of unit
-            setEditingEntry(entry);
-            setNewValue(entry.value.toString());
-            setNewComments(entry.comments || '');
-            setShowEditRequestModal(true);
-        } else {
-            // Other users can edit directly
-            onEdit(entry);
-        }
-    };
+const handleEditClick = (entry: MonitoringEntry) => {
+    if (isEmployee) {
+        // Employees must request edit through head of unit
+        setEditingEntry(entry);
+        setNewValue(entry.value.toString());
+        setNewComments(entry.comments || '');
+        setShowEditRequestModal(true);
+    } else {
+        // Other users can edit directly
+        onEdit(entry);
+    }
+};
+
+const handleDeleteClick = (entry: MonitoringEntry) => {
+    if (isEmployee) {
+        // Employees must request delete through head of unit
+        setEditingEntry(entry);
+        setShowDeleteRequestModal(true);
+    } else {
+        // Other users can delete directly
+        onDelete((entry as any)._id);
+    }
+};
 
     const handleSubmitEditRequest = async () => {
         if (!editingEntry || !user) return;
@@ -366,6 +378,116 @@ const ResponsesView: React.FC<ResponsesViewProps> = ({ entries, user, onEdit, on
                 </div>
             )}
 
+            {/* Delete Request Modal for Employees */}
+            {showDeleteRequestModal && editingEntry && (
+                <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50" onClick={() => setShowDeleteRequestModal(false)}>
+                    <div className="bg-white rounded-2xl p-8 shadow-2xl max-w-lg w-full mx-4 animate-in zoom-in duration-300" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center space-x-3 mb-6">
+                            <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold text-slate-900">Request Data Deletion</h2>
+                                <p className="text-sm text-slate-500">Your request will be sent to the Head of Unit for approval</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-slate-50 p-4 rounded-xl mb-4">
+                            <p className="text-xs text-slate-500 font-semibold uppercase mb-1">Indicator</p>
+                            <p className="text-sm font-medium text-slate-800">{editingEntry.indicatorName}</p>
+                            <p className="text-xs text-slate-400 mt-1">{editingEntry.month} - {editingEntry.quarterId.toUpperCase()}</p>
+                        </div>
+
+                        <div className="bg-red-50 p-3 rounded-xl mb-4">
+                            <p className="text-xs text-red-500 font-semibold">Current Value</p>
+                            <p className="text-lg font-bold text-red-600">{editingEntry.value.toLocaleString()}</p>
+                        </div>
+
+                        <div className="mb-6">
+                            <label className="block text-xs font-bold text-slate-600 mb-2 uppercase">Reason for Deletion (required)</label>
+                            <textarea
+                                value={newComments}
+                                onChange={e => setNewComments(e.target.value)}
+                                placeholder="Explain why you're requesting this deletion..."
+                                className="w-full p-3 rounded-xl border border-slate-200 text-sm resize-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
+                                rows={4}
+                                required
+                            />
+                        </div>
+
+                        <div className="flex space-x-3">
+                            <button
+                                onClick={() => setShowDeleteRequestModal(false)}
+                                className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    if (!newComments.trim()) {
+                                        alert('Please provide a reason for deletion');
+                                        return;
+                                    }
+
+                                    setIsSubmitting(true);
+                                    try {
+                                        const pillar = PILLARS.find(p => p.name === editingEntry.pillarId || p.id === editingEntry.pillarId || p.name === editingEntry.pillarName);
+                                        const indicator = pillar?.outputs?.flatMap(output => output.indicators || []).find(i => i.id === editingEntry.indicatorId);
+
+                                        const response = await fetch(API_ENDPOINTS.DATA_DELETE_REQUEST, {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({
+                                                submissionId: (editingEntry as any)._id,
+                                                requestedBy: user?.email,
+                                                requestedByName: user?.name,
+                                                indicatorId: editingEntry.indicatorId,
+                                                indicatorName: indicator?.name || editingEntry.indicatorName,
+                                                pillarName: editingEntry.pillarName || editingEntry.pillarId,
+                                                quarterId: editingEntry.quarterId,
+                                                month: editingEntry.month,
+                                                oldValue: editingEntry.value,
+                                                oldComments: editingEntry.comments,
+                                                unit: user?.unit,
+                                                oldSubValues: editingEntry.subValues
+                                            })
+                                        });
+
+                                        if (response.ok) {
+                                            setSubmitSuccess('Your delete request has been submitted! The data will be removed if the Head of Unit approves it.');
+                                            setShowDeleteRequestModal(false);
+                                            setTimeout(() => setSubmitSuccess(null), 5000);
+                                        } else {
+                                            alert('Failed to submit delete request');
+                                        }
+                                    } catch (error) {
+                                        console.error('Error submitting delete request:', error);
+                                        alert('Error connecting to server');
+                                    } finally {
+                                        setIsSubmitting(false);
+                                    }
+                                }}
+                                disabled={isSubmitting}
+                                className="flex-1 px-4 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center space-x-2"
+                            >
+                                {isSubmitting ? (
+                                    <span>Submitting...</span>
+                                ) : (
+                                    <>
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                        <span>Submit Delete Request</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Success Message Banner */}
             {submitSuccess && (
                 <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50">
@@ -572,15 +694,15 @@ const ResponsesView: React.FC<ResponsesViewProps> = ({ entries, user, onEdit, on
                                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                                                     </svg>
                                                                 </button>
-                                                                <button
-                                                                    onClick={() => (entry as any)._id && onDelete((entry as any)._id)}
-                                                                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                                    title="Delete"
-                                                                >
-                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                                    </svg>
-                                                                </button>
+<button
+    onClick={() => handleDeleteClick(entry)}
+    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+    title={isEmployee ? 'Request Delete' : 'Delete'}
+>
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+    </svg>
+</button>
                                                             </div>
                                                         </td>
                                                     </tr>
