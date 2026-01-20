@@ -12,6 +12,7 @@ const ProgressCalculatorView: React.FC<ProgressCalculatorViewProps> = ({ entries
     const [pillarId, setPillarId] = useState('');
     const [indicatorId, setIndicatorId] = useState('');
     const [timelineId, setTimelineId] = useState('q1');
+    const [showPercentageOnly, setShowPercentageOnly] = useState(false);
 
     const selectedPillar = useMemo(() => PILLARS.find(p => p.id === pillarId), [pillarId]);
     const indicators = useMemo(() =>
@@ -253,6 +254,27 @@ const ProgressCalculatorView: React.FC<ProgressCalculatorViewProps> = ({ entries
                                 <option value="annual" className="font-bold text-blue-600">Full Year (Annual)</option>
                             </select>
                         </div>
+
+                        {/* Percentage Only Toggle - Only show for percentage-based indicators */}
+                        {selectedIndicator?.measurementType === 'percentage' && (
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Display Format</label>
+                                <div className="flex items-center space-x-2">
+                                    <button
+                                        onClick={() => setShowPercentageOnly(false)}
+                                        className={`flex-1 p-2 rounded-lg text-xs font-semibold transition-colors ${!showPercentageOnly ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}
+                                    >
+                                        Show Full Format
+                                    </button>
+                                    <button
+                                        onClick={() => setShowPercentageOnly(true)}
+                                        className={`flex-1 p-2 rounded-lg text-xs font-semibold transition-colors ${showPercentageOnly ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}
+                                    >
+                                        Percentage Only
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                         {formulaExplanation && (
@@ -360,15 +382,26 @@ const ProgressCalculatorView: React.FC<ProgressCalculatorViewProps> = ({ entries
 
                                 {/* Summary Footer */}
                                 <div className="p-8 bg-slate-900 text-white flex flex-col md:flex-row items-center justify-between gap-6">
-                                    <div className="space-y-1 text-center md:text-left">
-                                        <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">
-                                            {hasSubIndicators ? 'Combined Total' : isAnnual ? 'Year Total' : 'Quarter Total'}
-                                        </p>
-                                        <div className="flex items-baseline space-x-2 justify-center md:justify-start">
-                                            <span className="text-3xl font-black">{calcResult?.totalActual?.toLocaleString() || 0}</span>
-                                            <span className="text-slate-500 font-bold">/ {calcResult?.target?.toLocaleString() || 0}</span>
+                                    {!showPercentageOnly ? (
+                                        <div className="space-y-1 text-center md:text-left">
+                                            <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">
+                                                {hasSubIndicators ? 'Combined Total' : isAnnual ? 'Year Total' : 'Quarter Total'}
+                                            </p>
+                                            <div className="flex items-baseline space-x-2 justify-center md:justify-start">
+                                                <span className="text-3xl font-black">{calcResult?.totalActual?.toLocaleString() || 0}</span>
+                                                <span className="text-slate-500 font-bold">/ {calcResult?.target?.toLocaleString() || 0}</span>
+                                            </div>
                                         </div>
-                                    </div>
+                                    ) : (
+                                        <div className="space-y-1 text-center md:text-left">
+                                            <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">
+                                                {hasSubIndicators ? 'Combined Total' : isAnnual ? 'Year Total' : 'Quarter Total'}
+                                            </p>
+                                            <div className="text-3xl font-black text-blue-500">
+                                                {calcResult?.performance?.toFixed(1) || 0}%
+                                            </div>
+                                        </div>
+                                    )}
 
                                     <div className="flex items-center space-x-6">
                                         <div className="h-16 w-[1px] bg-slate-800 hidden md:block"></div>

@@ -54,11 +54,24 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
   const [targetValue, setTargetValue] = useState<string>('');
   const [achievementValue, setAchievementValue] = useState<string>('');
   const [comments, setComments] = useState('');
+  const [showPercentageOnlyInput, setShowPercentageOnlyInput] = useState(false);
+
+  // Set default to percentage-only for percentage-based indicators
+  useEffect(() => {
+    // This effect will run after the component renders and selectedIndicator is available
+    // We need to check if selectedIndicator exists first
+    if (selectedIndicator?.measurementType === 'percentage' &&
+        !['74', '83', '87', '88', '101', '132', '69', '99'].includes(indicatorId)) {
+      setShowPercentageOnlyInput(true);
+    }
+  }, [indicatorId]); // Remove selectedIndicator from dependencies to avoid the initialization issue
 
   // Submission period state
   const [submissionPeriod, setSubmissionPeriod] = useState<SubmissionPeriod | null>(null);
   const [countdown, setCountdown] = useState<string>('');
   const [isSubmissionOpen, setIsSubmissionOpen] = useState(true);
+  const [isLoadingSubmissionPeriod, setIsLoadingSubmissionPeriod] = useState(true);
+  const [submissionPeriodError, setSubmissionPeriodError] = useState<string | null>(null);
 
   // Success message state
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -73,13 +86,20 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
   useEffect(() => {
     const fetchSubmissionPeriod = async () => {
       try {
+        setIsLoadingSubmissionPeriod(true);
+        setSubmissionPeriodError(null);
         const response = await fetch(API_ENDPOINTS.SUBMISSION_PERIOD_CURRENT);
         if (response.ok) {
           const data = await response.json();
           setSubmissionPeriod(data);
+        } else {
+          setSubmissionPeriodError('Failed to load submission period. Please refresh the page.');
         }
       } catch (error) {
         console.error('Error fetching submission period:', error);
+        setSubmissionPeriodError('Error connecting to server. Please check your connection and refresh.');
+      } finally {
+        setIsLoadingSubmissionPeriod(false);
       }
     };
     fetchSubmissionPeriod();
@@ -113,9 +133,16 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
       }
     };
 
+    // Initial update
     updateCountdown();
+
+    // Set up interval
     const interval = setInterval(updateCountdown, 60000); // Update every minute
-    return () => clearInterval(interval);
+
+    // Cleanup function
+    return () => {
+      clearInterval(interval);
+    };
   }, [submissionPeriod]);
 
   // Effect to handle editing mode
@@ -250,106 +277,125 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
     setSupportingDocuments(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!pillarName || !indicatorId || !quarterId || !month) {
-      alert("Please fill all required fields");
-      return;
-    }
-
-    // Validation for dual indicators can be enhanced here if needed
-    if (!selectedIndicator?.isDual && achievementValue === '') {
-      return;
-    }
-
-    let finalValue = achievementValue !== '' ? Number(achievementValue) : 0;
-
-    // Convert subValues to numbers for storage/payload
-    const numericSubValues: Record<string, number> = {};
-    Object.keys(subValues).forEach(key => {
-      numericSubValues[key] = subValues[key] !== '' ? Number(subValues[key]) : 0;
-    });
-
-    // Auto-calculate percentage if using the 2-step input
-    if (selectedIndicator?.measurementType === 'percentage' &&
-      subValues['target_pop'] !== undefined &&
-      subValues['achieved_pop'] !== undefined) {
-      finalValue = (numericSubValues['achieved_pop'] / numericSubValues['target_pop']) * 100;
-    }
-
-    const payload = {
-      pillarId: pillarName,
-      pillarName: pillarName,
-      indicatorId,
-      indicatorName: selectedIndicator?.name || '',
-      quarterId,
-      month,
-      value: finalValue,
-      targetValue: targetValue ? Number(targetValue) : 0,
-      subValues: selectedIndicator?.isDual || selectedIndicator?.measurementType === 'percentage' ? numericSubValues : undefined,
-      comments,
-      supportingDocuments: supportingDocuments.map(doc => ({
-        url: doc.url,
-        publicId: doc.publicId,
-        format: doc.format,
-        originalName: doc.originalName,
-        uploadedAt: new Date().toISOString()
-      })),
-      submittedBy: userEmail,
-      timestamp: new Date().toISOString()
-    };
-
-    const isEditing = !!(initialEntry as any)?._id;
-    const url = isEditing
-      ? getSubmissionUrl((initialEntry as any)._id)
-      : API_ENDPOINTS.SUBMISSIONS;
-
-    try {
-      const response = await fetch(url, {
-        method: isEditing ? 'PATCH' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (response.ok) {
-        const savedData = await response.json();
-
-        // Show success modal with checkmark
-        setSuccessMessage(isEditing ? 'Data updated successfully!' : 'Data submitted successfully!');
-        setShowSuccessModal(true);
-
-        // Also update local list if needed, or just clear form
-        onAddEntry({
-          ...payload,
-          _id: (savedData as any)._id || (initialEntry as any)?._id,
-          outputId: '',
-        } as any);
-
-        if (!isEditing) {
-          setIndicatorId('');
-          setTargetValue('');
-          setAchievementValue('');
-          setSubValues({});
-          setComments('');
-          setSupportingDocuments([]);
-        } else if (onCancelEdit) {
-          setTimeout(() => {
-            onCancelEdit();
-          }, 2000);
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!pillarName || !indicatorId || !quarterId || !month) {
+            alert("Please fill all required fields");
+            return;
         }
-      } else {
-        console.error("Submission failed");
-        setSuccessMessage('Failed to submit data. Please try again.');
-        setShowSuccessModal(true);
-      }
-    } catch (error) {
-      console.error("Error submitting form:", error);
-      setSuccessMessage('Error connecting to server. Please check your connection.');
-      setShowSuccessModal(true);
-    }
-  };
+
+        // Validation for dual indicators can be enhanced here if needed
+        if (!selectedIndicator?.isDual && achievementValue === '') {
+            return;
+        }
+
+        let finalValue = achievementValue !== '' ? Number(achievementValue) : 0;
+
+        // Convert subValues to numbers for storage/payload
+        const numericSubValues: Record<string, number> = {};
+        Object.keys(subValues).forEach(key => {
+            numericSubValues[key] = subValues[key] !== '' ? Number(subValues[key]) : 0;
+        });
+
+        // Auto-calculate percentage if using the 2-step input
+        if (selectedIndicator?.measurementType === 'percentage' &&
+          subValues['target_pop'] !== undefined &&
+          subValues['achieved_pop'] !== undefined) {
+            finalValue = (numericSubValues['achieved_pop'] / numericSubValues['target_pop']) * 100;
+        }
+
+        const payload = {
+            pillarId: pillarName,
+            pillarName: pillarName,
+            indicatorId,
+            indicatorName: selectedIndicator?.name || '',
+            quarterId,
+            month,
+            value: finalValue,
+            targetValue: targetValue ? Number(targetValue) : 0,
+            subValues: selectedIndicator?.isDual || selectedIndicator?.measurementType === 'percentage' ? numericSubValues : undefined,
+            comments,
+            supportingDocuments: supportingDocuments.map(doc => ({
+                url: doc.url,
+                publicId: doc.publicId,
+                format: doc.format,
+                originalName: doc.originalName,
+                uploadedAt: new Date().toISOString()
+            })),
+            submittedBy: userEmail,
+            timestamp: new Date().toISOString()
+        };
+
+        // DEBUG: Log the payload being sent
+        console.log('SUBMISSION PAYLOAD:', {
+            indicatorId,
+            indicatorName: selectedIndicator?.name,
+            isDual: selectedIndicator?.isDual,
+            measurementType: selectedIndicator?.measurementType,
+            value: finalValue,
+            subValues: payload.subValues,
+            hasSubValues: !!payload.subValues && Object.keys(payload.subValues).length > 0
+        });
+
+        const isEditing = !!(initialEntry as any)?._id;
+        const url = isEditing
+            ? getSubmissionUrl((initialEntry as any)._id)
+            : API_ENDPOINTS.SUBMISSIONS;
+
+        try {
+            const response = await fetch(url, {
+                method: isEditing ? 'PATCH' : 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (response.ok) {
+                const savedData = await response.json();
+
+                // DEBUG: Log the response from server
+                console.log('SUBMISSION RESPONSE:', {
+                    status: response.status,
+                    savedData,
+                    hasSubValuesInResponse: savedData.subValues && Object.keys(savedData.subValues).length > 0
+                });
+
+                // Show success modal with checkmark
+                setSuccessMessage(isEditing ? 'Data updated successfully!' : 'Data submitted successfully!');
+                setShowSuccessModal(true);
+
+                // Also update local list if needed, or just clear form
+                onAddEntry({
+                    ...payload,
+                    _id: (savedData as any)._id || (initialEntry as any)?._id,
+                    outputId: '',
+                } as any);
+
+                if (!isEditing) {
+                    setIndicatorId('');
+                    setTargetValue('');
+                    setAchievementValue('');
+                    setSubValues({});
+                    setComments('');
+                    setSupportingDocuments([]);
+                } else if (onCancelEdit) {
+                    setTimeout(() => {
+                        onCancelEdit();
+                    }, 2000);
+                }
+            } else {
+                const errorData = await response.json();
+                console.error("Submission failed:", errorData);
+                setSuccessMessage(`Failed to submit data: ${errorData.message || 'Unknown error'}`);
+                setShowSuccessModal(true);
+            }
+        } catch (error) {
+            console.error("Error submitting form:", error);
+            setSuccessMessage('Error connecting to server. Please check your connection.');
+            setShowSuccessModal(true);
+        }
+    };
 
   // Improved Input Classes for better visibility and contrast
   const inputClasses = "w-full h-12 px-4 rounded-xl border-2 border-slate-300 bg-white text-slate-900 font-semibold shadow-sm hover:border-blue-500 focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10 transition-all outline-none disabled:bg-slate-50 disabled:border-slate-200 disabled:text-slate-400 cursor-pointer appearance-none text-sm ring-offset-2";
@@ -400,8 +446,40 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
         <p className="mt-1 md:mt-2 text-sm md:text-base text-slate-600 font-medium">Reporting monitoring data for Imihigo 2025-2026.</p>
       </header>
 
+      {/* Loading State */}
+      {isLoadingSubmissionPeriod && (
+        <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-6 text-center">
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <svg className="w-8 h-8 text-blue-600 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h3 className="text-xl font-bold text-blue-800 mb-2">Loading Submission Period</h3>
+          <p className="text-blue-600">Please wait while we fetch the current submission period...</p>
+        </div>
+      )}
+
+      {/* Error State */}
+      {submissionPeriodError && (
+        <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-6 text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h3 className="text-xl font-bold text-red-800 mb-2">Error Loading Data</h3>
+          <p className="text-red-600 mb-4">{submissionPeriodError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition-colors"
+          >
+            Refresh Page
+          </button>
+        </div>
+      )}
+
       {/* Submission Period Countdown Banner */}
-      {submissionPeriod && (
+      {submissionPeriod && !isLoadingSubmissionPeriod && !submissionPeriodError && (
         <div className={`rounded-2xl p-4 flex items-center justify-between ${isSubmissionOpen
           ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white'
           : 'bg-gradient-to-r from-red-500 to-rose-600 text-white'
@@ -436,7 +514,7 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
             </svg>
           </div>
           <h3 className="text-xl font-bold text-red-800 mb-2">System is Closed</h3>
-          <p className="text-red-600">
+          <p className="text-red-500">
             The submission period has {countdown.includes('Opens') ? 'not started yet' : 'ended'}.
             Please contact your administrator if you need to make submissions.
           </p>
@@ -575,6 +653,19 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                     </span>
                   )}
                 </h4>
+
+                {/* Percentage Only Toggle - Only show for generic percentage-based indicators */}
+                {selectedIndicator?.measurementType === 'percentage' &&
+                  !['74', '83', '87', '88', '101', '132', '69', '99'].includes(indicatorId) && (
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => setShowPercentageOnlyInput(true)}
+                      className={`flex-1 p-2 rounded-lg text-xs font-semibold transition-colors ${showPercentageOnlyInput ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}
+                    >
+                      Percentage Only
+                    </button>
+                  </div>
+                )}
 
                 {selectedIndicator?.isDual ? (
                   <div className="space-y-4">
@@ -986,37 +1077,6 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                       </div>
                     )}
 
-                    {indicatorId === '87' && (
-                      <div className="grid grid-cols-2 gap-3 md:gap-4">
-                        <div className="space-y-1.5">
-                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
-                            <span>15 Classrooms</span>
-                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('87a')}</span>
-                          </label>
-                          <input
-                            type="number"
-                            value={subValues['classrooms'] ?? ''}
-                            onChange={(e) => handleSubValueChange('classrooms', e.target.value)}
-                            placeholder="Classrooms"
-                            className={`${inputClasses} placeholder:text-slate-300 placeholder:font-normal`}
-                            required
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <label className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
-                            <span>24 Toilets</span>
-                            <span className="text-red-500 text-[9px]">Target: {getSubIndicatorTarget('87b')}</span>
-                          </label>
-                          <input
-                            type="number"
-                            value={subValues['toilets'] ?? ''}
-                            onChange={(e) => handleSubValueChange('toilets', e.target.value)}
-                            placeholder="Toilets"
-                            className={`${inputClasses} placeholder:text-slate-300 placeholder:font-normal`}
-                          />
-                        </div>
-                      </div>
-                    )}
 
                     {/* Hypertension and Diabetes Tracking (Indicator 69) */}
                     {indicatorId === '69' && (
@@ -1461,46 +1521,24 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                           <h4 className="font-bold text-amber-800 text-sm">Classroom & Toilet Construction Progress</h4>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-1.5">
-                            <label className="block text-[10px] font-bold text-amber-700 uppercase tracking-wider">
-                              15 Classrooms Progress (%)
-                            </label>
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="number"
-                                value={subValues['classrooms_percentage'] ?? ''}
-                                onChange={(e) => handleSubValueChange('classrooms_percentage', e.target.value)}
-                                placeholder="e.g. 60"
-                                className={`${inputClasses} placeholder:text-slate-300 bg-white flex-1`}
-                                min="0"
-                                max="100"
-                                step="0.1"
-                              />
-                              <span className="text-xl font-black text-amber-700">%</span>
-                            </div>
-                            <p className="text-[9px] text-slate-500">Percentage of 15 classrooms completed</p>
+                        <div className="space-y-1.5">
+                          <label className="block text-[10px] font-bold text-amber-700 uppercase tracking-wider">
+                            Overall Construction Progress (%)
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              value={subValues['percentage'] ?? ''}
+                              onChange={(e) => handleSubValueChange('percentage', e.target.value)}
+                              placeholder="e.g. 75"
+                              className={`${inputClasses} placeholder:text-slate-300 bg-white flex-1`}
+                              min="0"
+                              max="100"
+                              step="0.1"
+                            />
+                            <span className="text-xl font-black text-amber-700">%</span>
                           </div>
-
-                          <div className="space-y-1.5">
-                            <label className="block text-[10px] font-bold text-amber-700 uppercase tracking-wider">
-                              24 Toilets Progress (%)
-                            </label>
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="number"
-                                value={subValues['toilets_percentage'] ?? ''}
-                                onChange={(e) => handleSubValueChange('toilets_percentage', e.target.value)}
-                                placeholder="e.g. 75"
-                                className={`${inputClasses} placeholder:text-slate-300 bg-white flex-1`}
-                                min="0"
-                                max="100"
-                                step="0.1"
-                              />
-                              <span className="text-xl font-black text-amber-700">%</span>
-                            </div>
-                            <p className="text-[9px] text-slate-500">Percentage of 24 toilets completed</p>
-                          </div>
+                          <p className="text-[9px] text-slate-500">Enter overall percentage of construction work completed for both 15 classrooms and 24 toilets (0-100)</p>
                         </div>
                       </div>
                     )}
@@ -1923,67 +1961,89 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                           <h4 className="font-bold text-blue-800 text-sm">Percentage Calculation</h4>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          {/* Denominator (Target) */}
-                          <div className="space-y-1.5">
-                            <label className="block text-[10px] font-bold text-blue-700 uppercase tracking-wider">
-                              Denominator (Target)
-                            </label>
-                            <input
-                              type="number"
-                              value={subValues['target_pop'] ?? ''}
-                              onChange={(e) => handleSubValueChange('target_pop', e.target.value)}
-                              placeholder="e.g. 10000"
-                              className={`${inputClasses} placeholder:text-slate-300 bg-white`}
-                              min="1"
-                            />
-                            <p className="text-[9px] text-slate-500">Total target population</p>
-                          </div>
-
-                          {/* Numerator (Achieved) */}
-                          <div className="space-y-1.5">
-                            <label className="block text-[10px] font-bold text-blue-700 uppercase tracking-wider">
-                              Numerator (Achieved)
-                            </label>
-                            <input
-                              type="number"
-                              value={subValues['achieved_pop'] ?? ''}
-                              onChange={(e) => handleSubValueChange('achieved_pop', e.target.value)}
-                              placeholder="e.g. 2000"
-                              className={`${inputClasses} placeholder:text-slate-300 bg-white`}
-                              min="0"
-                            />
-                            <p className="text-[9px] text-slate-500">Number achieved so far</p>
-                          </div>
-
-                          {/* Calculated Percentage */}
-                          <div className="space-y-1.5">
-                            <label className="block text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
-                              Calculated Percentage
-                            </label>
-                            <div className={`h-12 px-4 rounded-xl border-2 ${Number(subValues['target_pop']) > 0
-                              ? 'border-emerald-300 bg-emerald-50'
-                              : 'border-slate-200 bg-slate-100'
-                              } flex items-center`}>
-                              <span className={`text-xl font-black ${Number(subValues['target_pop']) > 0
-                                ? 'text-emerald-600'
-                                : 'text-slate-400'
-                                }`}>
-                                {Number(subValues['target_pop']) > 0 && subValues['achieved_pop'] !== undefined
-                                  ? ((Number(subValues['achieved_pop']) / Number(subValues['target_pop'])) * 100).toFixed(1)
-                                  : '0.0'}%
-                              </span>
+                        {!showPercentageOnlyInput ? (
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* Denominator (Target) */}
+                            <div className="space-y-1.5">
+                              <label className="block text-[10px] font-bold text-blue-700 uppercase tracking-wider">
+                                Denominator (Target)
+                              </label>
+                              <input
+                                type="number"
+                                value={subValues['target_pop'] ?? ''}
+                                onChange={(e) => handleSubValueChange('target_pop', e.target.value)}
+                                placeholder="e.g. 10000"
+                                className={`${inputClasses} placeholder:text-slate-300 bg-white`}
+                                min="1"
+                              />
+                              <p className="text-[9px] text-slate-500">Total target population</p>
                             </div>
-                            <p className="text-[9px] text-emerald-600 font-bold">Auto-calculated from inputs</p>
+
+                            {/* Numerator (Achieved) */}
+                            <div className="space-y-1.5">
+                              <label className="block text-[10px] font-bold text-blue-700 uppercase tracking-wider">
+                                Numerator (Achieved)
+                              </label>
+                              <input
+                                type="number"
+                                value={subValues['achieved_pop'] ?? ''}
+                                onChange={(e) => handleSubValueChange('achieved_pop', e.target.value)}
+                                placeholder="e.g. 2000"
+                                className={`${inputClasses} placeholder:text-slate-300 bg-white`}
+                                min="0"
+                              />
+                              <p className="text-[9px] text-slate-500">Number achieved so far</p>
+                            </div>
+
+                            {/* Calculated Percentage */}
+                            <div className="space-y-1.5">
+                              <label className="block text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
+                                Calculated Percentage
+                              </label>
+                              <div className={`h-12 px-4 rounded-xl border-2 ${Number(subValues['target_pop']) > 0
+                                ? 'border-emerald-300 bg-emerald-50'
+                                : 'border-slate-200 bg-slate-100'
+                                } flex items-center`}>
+                                <span className={`text-xl font-black ${Number(subValues['target_pop']) > 0
+                                  ? 'text-emerald-600'
+                                  : 'text-slate-400'
+                                  }`}>
+                                  {Number(subValues['target_pop']) > 0 && subValues['achieved_pop'] !== undefined
+                                    ? ((Number(subValues['achieved_pop']) / Number(subValues['target_pop'])) * 100).toFixed(1)
+                                    : '0.0'}%
+                                </span>
+                              </div>
+                              <p className="text-[9px] text-emerald-600 font-bold">Auto-calculated from inputs</p>
+                            </div>
                           </div>
-                        </div>
+                        ) : (
+                          <div className="space-y-1.5">
+                            <label className="block text-[10px] font-bold text-blue-700 uppercase tracking-wider">
+                              Percentage Completed
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                value={subValues['percentage'] ?? ''}
+                                onChange={(e) => handleSubValueChange('percentage', e.target.value)}
+                                placeholder="e.g. 75"
+                                className={`${inputClasses} placeholder:text-slate-300 bg-white flex-1`}
+                                min="0"
+                                max="100"
+                                step="0.1"
+                              />
+                              <span className="text-xl font-black text-blue-700">%</span>
+                            </div>
+                            <p className="text-[9px] text-slate-500">Enter percentage directly (0-100)</p>
+                          </div>
+                        )}
 
                         <div className="mt-3 p-3 bg-white/70 rounded-lg border border-blue-100">
                           <p className="text-[10px] text-blue-700 font-semibold">
-                            <span className="font-black">Formula:</span> (Numerator ÷ Denominator) × 100 = Percentage
+                            <span className="font-black">Formula:</span> {showPercentageOnlyInput ? 'Enter percentage directly' : '(Numerator ÷ Denominator) × 100 = Percentage'}
                           </p>
                           <p className="text-[9px] text-slate-500 mt-1">
-                            This calculated percentage will be compared against the fixed target for progress tracking.
+                            This {showPercentageOnlyInput ? 'percentage' : 'calculated percentage'} will be compared against the fixed target for progress tracking.
                           </p>
                         </div>
                       </div>

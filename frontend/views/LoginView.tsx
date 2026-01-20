@@ -106,7 +106,9 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
         'Cash Crops Officer',
         'Disaster Management Officer',
         'Secondary and TVET Education Officer',
-        'Community Base Health Insurance Officer'
+        'Community Base Health Insurance Officer',
+        'Imihigo Coach',
+        'Legal Advisor and Notary'
     ];
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -131,6 +133,11 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                     const responseData = await response.json();
                     const userData = responseData.user || responseData;
                     const userName = userData.name || 'User';
+
+                    // Store the authentication token
+                    if (responseData.token) {
+                        localStorage.setItem('authToken', responseData.token);
+                    }
 
                     // Show welcome modal with animation
                     setWelcomeUserData({

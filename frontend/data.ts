@@ -172,11 +172,11 @@ export const INDICATORS: Indicator[] = [
     "id": "10a",
     "name": "Quantity of DAP used (Kg)",
     "targets": {
-      "q1": 85000,
-      "q2": 95000,
-      "q3": 120000,
-      "q4": 50000,
-      "annual": 350000
+      "q1": 92900,
+      "q2": 406826,
+      "q3": 110274,
+      "q4": 0,
+      "annual": 610000
     }
   },
   {
@@ -366,8 +366,8 @@ export const INDICATORS: Indicator[] = [
     "name": "Number of cows vaccinated against Black quarter (BQ)",
     "targets": {
       "q1": 0,
-      "q2": 34000,
-      "q3": 0,
+      "q2": 0,
+      "q3": 34000,
       "q4": 0,
       "annual": 34000
     }
@@ -911,11 +911,11 @@ export const INDICATORS: Indicator[] = [
     "id": "69",
     "name": "Percentage of people screened positive to Hypertension and Diabetes enrolled into care and treatment",
     "targets": {
-      "q1": "20%",
-      "q2": "40%",
-      "q3": "60%",
-      "q4": "80%",
-      "annual": "80%"
+      "q1": 0,
+      "q2": 0,
+      "q3": 0,
+      "q4": 0,
+      "annual": 0
     },
     "isDual": true,
     "measurementType": "percentage",
@@ -1319,11 +1319,11 @@ export const INDICATORS: Indicator[] = [
     "id": "99",
     "name": "Percentage of Education information recorded into the SDMS system with accuracy",
     "targets": {
-      "q1": "-",
-      "q2": "70%",
-      "q3": "80%",
-      "q4": "85%",
-      "annual": "100%"
+      "q1": 0,
+      "q2": 0,
+      "q3": 0,
+      "q4": 0,
+      "annual": 0
     },
     "isDual": true,
     "measurementType": "percentage",

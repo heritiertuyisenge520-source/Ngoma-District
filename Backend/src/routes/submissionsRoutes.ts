@@ -10,7 +10,7 @@ router.get('/', async (req, res) => {
         const submissions = await SubmissionModel.find({})
             .sort({ timestamp: -1 })
             .lean();
-        
+
         // Transform submissions to match MonitoringEntry format expected by frontend
         const entries = submissions.map(sub => ({
             _id: sub._id.toString(),
@@ -53,8 +53,29 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
     try {
         const submissionData = req.body;
+
+        // DEBUG: Log incoming submission data
+        console.log('INCOMING SUBMISSION DATA:', {
+            indicatorId: submissionData.indicatorId,
+            indicatorName: submissionData.indicatorName,
+            value: submissionData.value,
+            hasSubValues: submissionData.subValues && Object.keys(submissionData.subValues).length > 0,
+            subValues: submissionData.subValues,
+            submittedBy: submissionData.submittedBy
+        });
+
         const submission = new SubmissionModel(submissionData);
         await submission.save();
+
+        // DEBUG: Log saved submission
+        console.log('SAVED SUBMISSION:', {
+            _id: submission._id,
+            indicatorId: submission.indicatorId,
+            value: submission.value,
+            hasSubValues: submission.subValues && Object.keys(submission.subValues).length > 0,
+            subValues: submission.subValues
+        });
+
         res.status(201).json(submission);
     } catch (error: any) {
         console.error('Error creating submission:', error);
@@ -63,24 +84,41 @@ router.post('/', async (req, res) => {
 });
 
 // Update a submission
-router.put('/:id', authenticate, authorize(['super_admin']), async (req, res) => {
+router.put('/:id', authenticate, async (req, res) => {
     try {
+        // DEBUG: Log update data
+        console.log('UPDATE SUBMISSION DATA:', {
+            submissionId: req.params.id,
+            updateData: req.body,
+            hasSubValues: req.body.subValues && Object.keys(req.body.subValues).length > 0
+        });
+
         const submission = await SubmissionModel.findByIdAndUpdate(
             req.params.id,
             req.body,
             { new: true, runValidators: true }
         );
+
         if (!submission) {
             return res.status(404).json({ message: 'Submission not found' });
         }
+
+        // DEBUG: Log updated submission
+        console.log('UPDATED SUBMISSION:', {
+            _id: submission._id,
+            hasSubValues: submission.subValues && Object.keys(submission.subValues).length > 0,
+            subValues: submission.subValues
+        });
+
         res.json(submission);
     } catch (error: any) {
+        console.error('Error updating submission:', error);
         res.status(400).json({ message: 'Error updating submission', error: error.message });
     }
 });
 
 // Delete a submission
-router.delete('/:id', authenticate, authorize(['super_admin']), async (req, res) => {
+router.delete('/:id', authenticate, async (req, res) => {
     try {
         const submission = await SubmissionModel.findByIdAndDelete(req.params.id);
         if (!submission) {

@@ -2,10 +2,11 @@ import React from 'react';
 
 interface NavbarProps {
   user: { email: string; name: string; role: string } | null;
+  submittedBy?: string | null;
   onMenuClick?: () => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ user, onMenuClick }) => {
+const Navbar: React.FC<NavbarProps> = ({ user, submittedBy, onMenuClick }) => {
   return (
     <div className="px-4 md:px-6 py-4 flex items-center justify-between">
       {/* Left - Hamburger + Breadcrumb */}

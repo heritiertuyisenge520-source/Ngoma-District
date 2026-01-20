@@ -8,14 +8,17 @@ import TargetView from './views/TargetView';
 import PowerPointView from './views/PowerPointView';
 import ProgressCalculatorView from './views/ProgressCalculatorView';
 import ResponsesView from './views/ResponsesView';
+import SubmittedDataView from './views/SubmittedDataView';
 import LoginView from './views/LoginView';
 import ApproveUsersView from './views/ApproveUsersView';
 import AssignIndicatorsView from './views/AssignIndicatorsView';
 import DataChangeRequestsView from './views/DataChangeRequestsView';
 import MonitorSubmitView from './views/MonitorSubmitView';
 import ManageUsersView from './views/ManageUsersView';
+import ErrorBoundary from './components/ErrorBoundary';
 import { MonitoringEntry } from './types';
 import { API_ENDPOINTS, getAssignedIndicatorsUrl } from './config/api';
+import { PILLARS, INDICATORS } from './data';
 
 const STORAGE_KEYS = {
   USER: 'imihigo_user',
@@ -108,9 +111,21 @@ const App: React.FC = () => {
     }
 
     try {
+      // Get the authentication token from localStorage
+      const token = localStorage.getItem('authToken');
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+
+      // Add authorization header if token exists
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${API_ENDPOINTS.SUBMISSIONS}/${(entry as any)._id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: headers,
         body: JSON.stringify(entry)
       });
 
@@ -118,7 +133,8 @@ const App: React.FC = () => {
         // Update the entry in the local state
         setEntries(entries.map(e => (e as any)._id === (entry as any)._id ? entry : e));
       } else {
-        alert('Failed to update entry');
+        const errorData = await response.json();
+        alert(`Failed to update entry: ${errorData.message || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error updating entry:', error);
@@ -135,15 +151,29 @@ const App: React.FC = () => {
 
     if (window.confirm('Are you sure you want to delete this entry? This action cannot be undone.')) {
       try {
+        // Get the authentication token from localStorage
+        const token = localStorage.getItem('authToken');
+
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json'
+        };
+
+        // Add authorization header if token exists
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
         const response = await fetch(`${API_ENDPOINTS.SUBMISSIONS}/${id}`, {
-          method: 'DELETE'
+          method: 'DELETE',
+          headers: headers
         });
 
         if (response.ok) {
           // Remove the entry from local state
           setEntries(entries.filter(e => (e as any)._id !== id));
         } else {
-          alert('Failed to delete entry');
+          const errorData = await response.json();
+          alert(`Failed to delete entry: ${errorData.message || 'Unknown error'}`);
         }
       } catch (error) {
         console.error('Error deleting entry:', error);
@@ -152,13 +182,164 @@ const App: React.FC = () => {
     }
   };
 
+  const handleDownloadEntry = async (entry: MonitoringEntry) => {
+    try {
+      // Import jsPDF dynamically
+      const { default: jsPDF } = await import('jspdf');
+      const doc = new jsPDF();
+
+      // Set up document properties
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 15;
+      const lineHeight = 7;
+      let yPos = margin;
+
+      // Add header
+      doc.setFillColor(30, 58, 138); // Navy blue
+      doc.rect(0, 0, pageWidth, 30, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      doc.text('NGOMA DISTRICT - IMIHIGO TRACKING TOOL', pageWidth / 2, 15, { align: 'center' });
+      doc.setFontSize(14);
+      doc.text('ENTRY DETAILS REPORT', pageWidth / 2, 23, { align: 'center' });
+
+      // Reset text color and position for content
+      yPos = 40;
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'normal');
+
+      // Add entry details
+      const addDetailRow = (label: string, value: string) => {
+        doc.setFont('helvetica', 'bold');
+        doc.text(label, margin, yPos);
+        doc.setFont('helvetica', 'normal');
+        doc.text(value, margin + 60, yPos);
+        yPos += lineHeight;
+      };
+
+      // Entry details
+      addDetailRow('Entry ID:', (entry as any)._id || 'N/A');
+      addDetailRow('Indicator:', entry.indicatorName || 'Unknown Indicator');
+      addDetailRow('Pillar:', entry.pillarName || 'Unknown Pillar');
+      addDetailRow('Period:', entry.month + " (" + (entry.quarterId?.toUpperCase() || 'N/A') + ")");
+
+      // Check if this is a parent indicator with sub-indicators
+      const entryIndicator = INDICATORS.find(i => i.id === entry.indicatorId);
+      const hasSubIndicators = entryIndicator?.subIndicatorIds && Object.keys(entryIndicator.subIndicatorIds).length > 0;
+
+      // Only show Value and Target for indicators WITHOUT sub-indicators
+      if (!hasSubIndicators) {
+        addDetailRow('Value:', entry.value?.toLocaleString() || '0');
+        addDetailRow('Target:', entry.targetValue?.toLocaleString() || 'N/A');
+      }
+
+      addDetailRow('Submitted By:', entry.submittedBy || 'Unknown');
+      addDetailRow('Timestamp:', entry.timestamp || new Date().toISOString());
+
+      // Add comments if available
+      if (entry.comments) {
+        yPos += 3;
+        doc.setFont('helvetica', 'bold');
+        doc.text('Comments:', margin, yPos);
+        yPos += lineHeight;
+        doc.setFont('helvetica', 'normal');
+        const commentLines = doc.splitTextToSize(entry.comments, pageWidth - 2 * margin);
+        doc.text(commentLines, margin, yPos);
+        yPos += (commentLines.length * lineHeight) + 3;
+      }
+
+      // Add sub-indicators if available
+      if (entry.subValues && Object.keys(entry.subValues).length > 0) {
+        yPos += 5;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+
+        // If this is a parent indicator with sub-indicators, show the parent name with sub-indicator breakdown
+        if (hasSubIndicators) {
+          doc.text(entry.indicatorName || 'Unknown Indicator', pageWidth / 2, yPos, { align: 'center' });
+          yPos += 8;
+          doc.setFontSize(12);
+          doc.setFont('helvetica', 'normal');
+          doc.text('Sub-Indicator Breakdown:', margin, yPos);
+          yPos += lineHeight;
+        } else {
+          doc.text('Sub-Indicator Values', pageWidth / 2, yPos, { align: 'center' });
+          yPos += 8;
+          doc.setFontSize(12);
+          doc.setFont('helvetica', 'normal');
+        }
+
+        // Draw separator line
+        doc.setDrawColor(200, 200, 200);
+        doc.line(margin, yPos, pageWidth - margin, yPos);
+        yPos += 5;
+
+        Object.entries(entry.subValues).forEach(([subIndicatorId, subValue]) => {
+          // Find the sub-indicator name
+          const subIndicator = INDICATORS.find(i => i.id === subIndicatorId);
+          const subIndicatorName = subIndicator?.name || subIndicatorId;
+
+          // For parent indicators, try to find the short name from subIndicatorIds mapping
+          let displayName = subIndicatorName;
+          if (hasSubIndicators && entryIndicator?.subIndicatorIds) {
+            const shortName = Object.keys(entryIndicator.subIndicatorIds).find(
+              (key) => entryIndicator.subIndicatorIds[key] === subIndicatorId
+            );
+            if (shortName) {
+              displayName = shortName + ": " + subIndicatorName;
+            }
+          }
+
+          doc.setFont('helvetica', 'bold');
+          doc.text(displayName + ':', margin, yPos);
+          doc.setFont('helvetica', 'normal');
+          doc.text(Number(subValue).toLocaleString(), margin + 60, yPos);
+          yPos += lineHeight;
+        });
+
+        yPos += 5;
+      } else if (hasSubIndicators) {
+        // If this is a parent indicator but has no sub-values in this entry, show a note
+        yPos += 5;
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(11);
+        doc.text('Note: This is a parent indicator. Sub-indicator values would appear here if available.', margin, yPos);
+        yPos += lineHeight + 3;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(12);
+      }
+
+      // Add footer
+      yPos = pageHeight - 20;
+      doc.setFontSize(10);
+      doc.setTextColor(100, 100, 100);
+      doc.text('Generated on: ' + new Date().toLocaleString(), margin, yPos);
+      doc.text('Ngoma District Imihigo Tracking System', pageWidth - margin, yPos, { align: 'right' });
+
+      // Create a clean filename with the indicator name
+      const cleanIndicatorName = (entry.indicatorName || 'indicator').replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
+      const filename = "entry_" + cleanIndicatorName + "_" + (entry as any)._id + ".pdf";
+
+      // Save the PDF
+      doc.save(filename);
+
+      // Show success message
+      alert('Entry downloaded successfully as PDF!');
+      console.log('Entry downloaded successfully as PDF:', (entry as any)._id);
+    } catch (error) {
+      console.error('Error downloading entry as PDF:', error);
+      alert('Error downloading entry. Please try again.');
+    }
+  };
+
   if (!user) return <LoginView onLogin={handleLogin} />;
 <task_progress>
-- [x] Examine current permission structure
-- [x] Check available views for data editing
-- [x] Add data editing permission for admins
-- [x] Update sidebar menu for admins
-- [ ] Save changes
+- [x] Fix unterminated template literal error
+- [x] Update all syntax to avoid template literals
+- [ ] Test the changes
 </task_progress>
 
   return (
@@ -191,20 +372,23 @@ const App: React.FC = () => {
           <div className="w-full h-full">
             {activeView === 'analytics' && <AnalyticsView entries={entries} userType={user.userType} />}
             {activeView === 'fill' && (
-              <FillFormView
-                entries={entries}
-                onAddEntry={(e) => setEntries([e, ...entries])}
-                initialEntry={editingEntry}
-                userEmail={user.email}
-                userName={user.name}
-                userRole={user.role}
-                userType={user.userType}
-                userUnit={user.unit}
-                assignedIndicators={assignedIndicators}
-                onCancelEdit={() => setActiveView('responses')}
-              />
+              <ErrorBoundary>
+                <FillFormView
+                  entries={entries}
+                  onAddEntry={(e) => setEntries([e, ...entries])}
+                  initialEntry={editingEntry}
+                  userEmail={user.email}
+                  userName={user.name}
+                  userRole={user.role}
+                  userType={user.userType}
+                  userUnit={user.unit}
+                  assignedIndicators={assignedIndicators}
+                  onCancelEdit={() => setActiveView('responses')}
+                />
+              </ErrorBoundary>
             )}
             {activeView === 'responses' && <ResponsesView entries={entries} user={user} onEdit={handleEditEntry} onDelete={handleDeleteEntry} />}
+            {activeView === 'submitted-data' && <SubmittedDataView entries={entries} user={user} onDelete={handleDeleteEntry} onEdit={handleEditEntry} onDownload={handleDownloadEntry} />}
             {activeView === 'targets' && <TargetView />}
             {activeView === 'ppt' && <PowerPointView entries={entries} />}
             {activeView === 'preview' && <PreviewView entries={entries} />}
