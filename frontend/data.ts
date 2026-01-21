@@ -885,14 +885,16 @@ export const INDICATORS: Indicator[] = [
   },
   {
     "id": "67",
-    "name": "Number of vulnerable PwDs supported with assistive devices",
+    "name": "Completion of 4 retaining walls (%)",
     "targets": {
-      "q1": 30,
-      "q2": 50,
-      "q3": 40,
-      "q4": 30,
-      "annual": 150
-    }
+      "q1": "80%",
+      "q2": "100%",
+      "q3": "0",
+      "q4": "0",
+      "annual": "100%"
+    },
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "68",

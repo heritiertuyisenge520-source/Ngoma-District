@@ -86,7 +86,7 @@ export interface IIndicatorAssignment extends Document {
 // Audit Log Interface
 export interface IAuditLog {
     action: string;
-    collection: string;
+    collectionName: string;
     documentId: string;
     userId?: string;
     changes?: any;
@@ -198,7 +198,7 @@ export const UserModel = mongoose.model<IUser>('User', UserSchema);
 // Audit Log Schema
 const AuditLogSchema = new Schema({
     action: { type: String, required: true },
-    collection: { type: String, required: true },
+    collectionName: { type: String, required: true },
     documentId: { type: String, required: true },
     userId: { type: String },
     changes: { type: Schema.Types.Mixed },

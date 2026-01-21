@@ -287,7 +287,26 @@ const SubmittedDataView: React.FC<SubmittedDataViewProps> = (props) => {
   };
 
   // Debug: Log entries to see what data we're receiving
-  console.log('SubmittedDataView - Received entries:', entries);
+  console.log('=== SUBMITTED DATA VIEW DEBUG ===');
+  console.log('Received entries count:', entries.length);
+  console.log('Received entries:', entries);
+  console.log('Sample entry structure:', entries[0]);
+  
+  // Check if entries have the expected structure
+  if (entries.length > 0) {
+    const firstEntry = entries[0];
+    console.log('First entry analysis:', {
+      _id: firstEntry._id,
+      pillarId: firstEntry.pillarId,
+      pillarName: firstEntry.pillarName,
+      indicatorId: firstEntry.indicatorId,
+      indicatorName: firstEntry.indicatorName,
+      hasSubValues: firstEntry.subValues && Object.keys(firstEntry.subValues).length > 0,
+      subValues: firstEntry.subValues,
+      hasSupportingDocs: firstEntry.supportingDocuments && firstEntry.supportingDocuments.length > 0,
+      supportingDocuments: firstEntry.supportingDocuments
+    });
+  }
 
   // If no entries, use some sample data for testing
   const entriesWithFallback = entries.length > 0 ? entries : [
@@ -332,17 +351,42 @@ const SubmittedDataView: React.FC<SubmittedDataViewProps> = (props) => {
     const pillar = PILLARS.find(p => p.id === effectivePillarId);
     const indicator = pillar?.outputs.flatMap(o => o.indicators).find(i => i.id === entry.indicatorId);
 
-    // Debug: Log pillar and indicator lookup results
-    console.log('Entry debug:', {
-      entryId: entry._id,
-      pillarId: entry.pillarId,
-      indicatorId: entry.indicatorId,
+    // Enhanced debug logging for each entry
+    console.log(`Entry ${entry._id} debug:`, {
+      originalPillarId: entry.pillarId,
+      effectivePillarId: effectivePillarId,
+      pillarId: entry.indicatorId,
       foundPillar: pillar ? pillar.name : 'NOT FOUND',
-      foundIndicator: indicator ? indicator.name : 'NOT FOUND'
+      foundIndicator: indicator ? indicator.name : 'NOT FOUND',
+      entryPillarName: entry.pillarName,
+      entryIndicatorName: entry.indicatorName,
+      willBeIncluded: pillar && indicator
     });
 
-    const searchStr = `${pillar?.name} ${indicator?.name} ${entry.month} ${entry.value} ${entry.submittedBy || ''}`.toLowerCase();
-    return searchStr.includes(searchTerm.toLowerCase());
+    // More permissive filtering - include entry if pillar OR indicator is found
+    // Also include entries that have pillarName/indicatorName from database
+    const hasPillarData = pillar || entry.pillarName;
+    const hasIndicatorData = indicator || entry.indicatorName;
+    
+    if (!hasPillarData || !hasIndicatorData) {
+      console.warn(`Entry ${entry._id} has missing data:`, {
+        hasPillarData,
+        hasIndicatorData,
+        pillarName: entry.pillarName,
+        indicatorName: entry.indicatorName
+      });
+    }
+
+    // Search functionality - include entries that match search terms
+    const searchStr = `${pillar?.name || entry.pillarName || ''} ${indicator?.name || entry.indicatorName || ''} ${entry.month || ''} ${entry.value || ''} ${entry.submittedBy || ''}`.toLowerCase();
+    const matchesSearch = searchStr.includes(searchTerm.toLowerCase());
+    
+    // Include entry if it has data and matches search
+    const shouldInclude = hasPillarData && hasIndicatorData && matchesSearch;
+    
+    console.log(`Entry ${entry._id} final decision:`, { shouldInclude, matchesSearch });
+    
+    return shouldInclude;
   });
 
   // Debug: Log filtered results
@@ -398,7 +442,9 @@ const SubmittedDataView: React.FC<SubmittedDataViewProps> = (props) => {
                 <th className="px-6 py-5 text-[11px] font-bold text-slate-700 uppercase tracking-widest">Pillar</th>
                 <th className="px-6 py-5 text-[11px] font-bold text-slate-700 uppercase tracking-widest">Indicator</th>
                 <th className="px-6 py-5 text-[11px] font-bold text-slate-700 uppercase tracking-widest">Period</th>
-                <th className="px-6 py-5 text-[11px] font-bold text-slate-700 uppercase tracking-widest text-right">Submitted Data</th>
+                <th className="px-6 py-5 text-[11px] font-bold text-slate-700 uppercase tracking-widest text-right">Value / Target</th>
+                <th className="px-6 py-5 text-[11px] font-bold text-slate-700 uppercase tracking-widest">Comments</th>
+                <th className="px-6 py-5 text-[11px] font-bold text-slate-700 uppercase tracking-widest">Supporting Docs</th>
                 <th className="px-6 py-5 text-[11px] font-bold text-slate-700 uppercase tracking-widest">Submitted By</th>
                 <th className="px-6 py-5 text-[11px] font-bold text-slate-700 uppercase tracking-widest">Actions</th>
               </tr>
@@ -427,11 +473,13 @@ const SubmittedDataView: React.FC<SubmittedDataViewProps> = (props) => {
                   return (
                     <tr key={idx} className="hover:bg-blue-50/30 transition-colors">
                       <td className="px-6 py-4">
-                        <span className="text-xs font-bold text-slate-900">{pillar?.name}</span>
+                        <span className="text-xs font-bold text-slate-900">
+                          {pillar?.name || entry.pillarName || 'Unknown Pillar'}
+                        </span>
                       </td>
                       <td className="px-6 py-4 max-w-md">
                         <div className="text-sm font-semibold text-slate-900">
-                          <p className="line-clamp-1">{indicator?.name}</p>
+                          <p className="line-clamp-1">{indicator?.name || entry.indicatorName || 'Unknown Indicator'}</p>
                           {/* Show if this indicator has sub-indicators */}
                           {hasSubIndicators && (
                             <p className="text-xs text-blue-600 mt-1 font-medium">
@@ -442,75 +490,100 @@ const SubmittedDataView: React.FC<SubmittedDataViewProps> = (props) => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-xs font-medium text-slate-600">
-                          {entry.month} ({entry.quarterId.toUpperCase()})
+                          {entry.month} ({entry.quarterId?.toUpperCase() || 'N/A'})
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        {/* Only show main indicator value if there are no sub-indicators */}
-                        {!entry.subValues || Object.keys(entry.subValues).length === 0 ? (
-                          <span className="text-sm font-black text-blue-700">
-                            {entry.value.toLocaleString()}
-                          </span>
-                        ) : (
-                          // Show sub-indicator values if they exist
-                          <div className="mt-2 p-2 bg-blue-50 rounded-lg">
-                            <p className="text-xs font-bold text-blue-800 mb-1">Sub-indicator Values:</p>
-                            {Object.entries(entry.subValues).map(([subIndicatorId, subValue]) => {
-                              // Find the sub-indicator name from INDICATORS
-                              const subIndicator = INDICATORS.find(i => i.id === subIndicatorId);
-
-                              // Also try to find by short name if direct ID lookup fails
-                              const entryIndicator = INDICATORS.find(i => i.id === entry.indicatorId);
-                              const subIndicators = entryIndicator?.subIndicatorIds || {};
-                              const subIndicatorKey = Object.keys(subIndicators).find(key => subIndicators[key] === subIndicatorId) || subIndicatorId;
-
-                              return (
-                                <div key={subIndicatorId} className="text-xs text-blue-700">
-                                  <span className="font-medium">{subIndicatorKey}:</span>
-                                  <span className="ml-1 font-bold">{Number(subValue).toLocaleString()}</span>
+                        <div className="space-y-1">
+                          {/* Only show main indicator value if there are no sub-indicators */}
+                          {!entry.subValues || Object.keys(entry.subValues).length === 0 ? (
+                            <div>
+                              <span className="text-sm font-black text-blue-700">
+                                {entry.value?.toLocaleString() || '0'}
+                              </span>
+                              {entry.targetValue !== undefined && entry.targetValue !== null && (
+                                <div className="text-xs text-slate-500">
+                                  Target: {entry.targetValue.toLocaleString()}
                                 </div>
-                              );
-                            })}
-                          </div>
-                        )}
+                              )}
+                            </div>
+                          ) : (
+                            // Show sub-indicator values if they exist
+                            <div className="mt-2 p-2 bg-blue-50 rounded-lg">
+                              <p className="text-xs font-bold text-blue-800 mb-1">Sub-indicator Values:</p>
+                              {Object.entries(entry.subValues).map(([subIndicatorId, subValue]) => {
+                                // Find the sub-indicator name from INDICATORS
+                                const subIndicator = INDICATORS.find(i => i.id === subIndicatorId);
+
+                                // Also try to find by short name if direct ID lookup fails
+                                const entryIndicator = INDICATORS.find(i => i.id === entry.indicatorId);
+                                const subIndicators = entryIndicator?.subIndicatorIds || {};
+                                const subIndicatorKey = Object.keys(subIndicators).find(key => subIndicators[key] === subIndicatorId) || subIndicatorId;
+
+                                return (
+                                  <div key={subIndicatorId} className="text-xs text-blue-700">
+                                    <span className="font-medium">{subIndicatorKey}:</span>
+                                    <span className="ml-1 font-bold">{Number(subValue).toLocaleString()}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
                       </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-xs font-medium text-slate-600">
-                        {entry.submittedBy || '-'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center space-x-2">
-                        {user.userType === 'super_admin' || user.userType === 'head' ? (
-                          <>
-                            <button
-                              onClick={() => onDelete && onDelete((entry as any)._id)}
-                              className="px-3 py-1 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 transition-colors"
-                            >
-                              Delete
-                            </button>
-                            <button
-                              onClick={() => handleEditClick(entry)}
-                              className="px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-colors"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => onDownload && onDownload(entry)}
-                              className="px-3 py-1 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-colors"
-                            >
-                              Download
-                            </button>
-                          </>
-                        ) : null}
-                      </div>
-                    </td>
-                  </tr>
-                );
+                      <td className="px-6 py-4 max-w-xs">
+                        <div className="text-xs text-slate-600">
+                          <p className="line-clamp-2">{entry.comments || '-'}</p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-xs text-slate-600">
+                          {entry.supportingDocuments && entry.supportingDocuments.length > 0 ? (
+                            <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full font-medium">
+                              {entry.supportingDocuments.length} file(s)
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">None</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-xs font-medium text-slate-600">
+                          {entry.submittedBy || '-'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center space-x-2">
+                          {user.userType === 'super_admin' || user.userType === 'head' ? (
+                            <>
+                              <button
+                                onClick={() => onDelete && onDelete((entry as any)._id)}
+                                className="px-3 py-1 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 transition-colors"
+                              >
+                                Delete
+                              </button>
+                              <button
+                                onClick={() => handleEditClick(entry)}
+                                className="px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-colors"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => onDownload && onDownload(entry)}
+                                className="px-3 py-1 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-colors"
+                              >
+                                Download
+                              </button>
+                            </>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  );
                 })
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-24 text-center">
+                  <td colSpan={8} className="px-6 py-24 text-center">
                     <div className="flex flex-col items-center">
                       <div className="bg-slate-50 p-4 rounded-full mb-3">
                         <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>

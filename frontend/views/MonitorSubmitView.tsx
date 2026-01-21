@@ -105,6 +105,29 @@ const MonitorSubmitView: React.FC<MonitorSubmitViewProps> = ({ user }) => {
         setShowForm(true);
     };
 
+    const handleDelete = async (periodId: string) => {
+        if (!confirm('Are you sure you want to delete this submission period? This action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(getSubmissionPeriodUrl(periodId), {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                setSuccessMessage('Submission period deleted successfully!');
+                fetchPeriods();
+                setTimeout(() => setSuccessMessage(''), 5000);
+            } else {
+                alert('Failed to delete submission period. Please try again.');
+            }
+        } catch (error) {
+            console.error('Error deleting submission period:', error);
+            alert('Failed to delete submission period. Please try again.');
+        }
+    };
+
     const getStatusInfo = (period: SubmissionPeriod) => {
         const now = new Date();
         const start = new Date(period.startDate);
@@ -304,15 +327,26 @@ const MonitorSubmitView: React.FC<MonitorSubmitViewProps> = ({ user }) => {
                                             </p>
                                             <p className="text-sm text-slate-600 mt-2 font-medium">{status.message}</p>
                                         </div>
-                                        <button
-                                            onClick={() => handleEdit(period)}
-                                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                            title="Edit Period"
-                                        >
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                            </svg>
-                                        </button>
+                                        <div className="flex items-center space-x-2">
+                                            <button
+                                                onClick={() => handleEdit(period)}
+                                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                title="Edit Period"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(period._id)}
+                                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                title="Delete Period"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             );

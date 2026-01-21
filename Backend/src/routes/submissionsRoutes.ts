@@ -1,13 +1,26 @@
 import express from 'express';
 import { SubmissionModel, EntryModel } from '../models';
-import { authenticate, authorize } from '../middleware/auth';
+import { authenticate, authorize, PERMISSIONS, authorizeUnitAccess, authorizeSubmissionAccess, AuthenticatedRequest } from '../middleware/auth';
 
 const router = express.Router();
 
 // Get all submissions
-router.get('/', async (req, res) => {
+router.get('/', authenticate, authorizeSubmissionAccess, async (req: AuthenticatedRequest, res) => {
     try {
-        const submissions = await SubmissionModel.find({})
+        let query: any = {};
+        
+        // Apply role-based filtering
+        if (req.user?.userType === 'employee') {
+            // Employees can only see their own submissions
+            query.submittedBy = req.user.email;
+        } else if (req.user?.userType === 'head') {
+            // Heads can see submissions from their unit
+            // We'll need to add unit field to submissions for this to work properly
+            // For now, heads can see all submissions (will be filtered on frontend)
+        }
+        // Super admins can see all submissions (no filtering)
+
+        const submissions = await SubmissionModel.find(query)
             .sort({ timestamp: -1 })
             .lean();
 
@@ -37,7 +50,7 @@ router.get('/', async (req, res) => {
 });
 
 // Get submission by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', authenticate, async (req: AuthenticatedRequest, res) => {
     try {
         const submission = await SubmissionModel.findById(req.params.id);
         if (!submission) {
@@ -50,7 +63,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create a new submission
-router.post('/', async (req, res) => {
+router.post('/', authenticate, authorize(PERMISSIONS.SUBMIT_DATA), async (req: AuthenticatedRequest, res) => {
     try {
         const submissionData = req.body;
 
@@ -84,7 +97,7 @@ router.post('/', async (req, res) => {
 });
 
 // Update a submission
-router.put('/:id', authenticate, async (req, res) => {
+router.put('/:id', authenticate, authorize(PERMISSIONS.EDIT_OWN_DATA), async (req: AuthenticatedRequest, res) => {
     try {
         // DEBUG: Log update data
         console.log('UPDATE SUBMISSION DATA:', {
@@ -118,7 +131,7 @@ router.put('/:id', authenticate, async (req, res) => {
 });
 
 // Delete a submission
-router.delete('/:id', authenticate, async (req, res) => {
+router.delete('/:id', authenticate, authorize(PERMISSIONS.DELETE_DATA), async (req: AuthenticatedRequest, res) => {
     try {
         const submission = await SubmissionModel.findByIdAndDelete(req.params.id);
         if (!submission) {
@@ -131,7 +144,7 @@ router.delete('/:id', authenticate, async (req, res) => {
 });
 
 // Get submissions by quarter
-router.get('/by-quarter', async (req, res) => {
+router.get('/by-quarter', authenticate, async (req: AuthenticatedRequest, res) => {
     try {
         const { quarterId } = req.query;
         const query: any = {};

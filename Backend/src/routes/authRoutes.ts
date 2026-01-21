@@ -1,7 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import { UserModel, IndicatorAssignmentModel, DataChangeRequestModel, DataDeleteRequestModel, SubmissionPeriodModel, SubmissionModel, UNITS } from '../models';
-import { generateAuthToken } from '../middleware/auth';
+import { generateAuthToken, authenticate, authorize, PERMISSIONS, authorizeUnitAccess, authorizeSubmissionAccess } from '../middleware/auth';
 
 const router = express.Router();
 
@@ -134,7 +134,7 @@ router.post('/login', async (req, res) => {
 });
 
 // Get pending users (admin only)
-router.get('/pending-users', async (req, res) => {
+router.get('/pending-users', authenticate, authorize(PERMISSIONS.APPROVE_USERS), async (req, res) => {
     try {
         const pendingUsers = await UserModel.find({
             isApproved: false,
@@ -149,7 +149,7 @@ router.get('/pending-users', async (req, res) => {
 });
 
 // Get all approved users (for head of unit to see their team members)
-router.get('/approved-users', async (req, res) => {
+router.get('/approved-users', authenticate, authorizeUnitAccess, async (req, res) => {
     try {
         const { unit } = req.query;
 
@@ -170,7 +170,7 @@ router.get('/approved-users', async (req, res) => {
 });
 
 // Approve user (admin only)
-router.post('/approve-user', async (req, res) => {
+router.post('/approve-user', authenticate, authorize(PERMISSIONS.APPROVE_USERS), async (req, res) => {
     try {
         const { userId, unit, userType, approverEmail } = req.body;
 
@@ -242,7 +242,7 @@ router.get('/units', async (req, res) => {
 });
 
 // Assign indicator to user (head of unit only)
-router.post('/assign-indicator', async (req, res) => {
+router.post('/assign-indicator', authenticate, authorize(PERMISSIONS.MANAGE_INDICATORS), async (req, res) => {
     try {
         const { userId, userEmail, userName, pillarId, pillarName, indicatorId, indicatorName, assignedBy, assignedByEmail, unit } = req.body;
 
@@ -284,7 +284,7 @@ router.post('/assign-indicator', async (req, res) => {
 });
 
 // Get assigned indicators for a user
-router.get('/assigned-indicators/:userEmail', async (req, res) => {
+router.get('/assigned-indicators/:userEmail', authenticate, authorizeUnitAccess, async (req, res) => {
     try {
         const { userEmail } = req.params;
 
@@ -323,7 +323,7 @@ router.delete('/unassign-indicator/:assignmentId', async (req, res) => {
 });
 
 // Get all assignments for a unit (for head of unit)
-router.get('/unit-assignments/:unit', async (req, res) => {
+router.get('/unit-assignments/:unit', authenticate, authorizeUnitAccess, async (req, res) => {
     try {
         const { unit } = req.params;
 
@@ -657,7 +657,7 @@ router.get('/submission-period/current', async (req, res) => {
 });
 
 // Get all submission periods (admin)
-router.get('/submission-periods', async (req, res) => {
+router.get('/submission-periods', authenticate, authorize(PERMISSIONS.MANAGE_PERIODS), async (req, res) => {
     try {
         const periods = await SubmissionPeriodModel.find().sort({ createdAt: -1 });
         res.json(periods);
@@ -668,7 +668,7 @@ router.get('/submission-periods', async (req, res) => {
 });
 
 // Create/Update submission period (admin only)
-router.post('/submission-period', async (req, res) => {
+router.post('/submission-period', authenticate, authorize(PERMISSIONS.MANAGE_PERIODS), async (req, res) => {
     try {
         const { description, startDate, endDate, createdBy, createdByName } = req.body;
 
@@ -697,7 +697,7 @@ router.post('/submission-period', async (req, res) => {
 });
 
 // Update submission period (admin)
-router.patch('/submission-period/:id', async (req, res) => {
+router.patch('/submission-period/:id', authenticate, authorize(PERMISSIONS.MANAGE_PERIODS), async (req, res) => {
     try {
         const { id } = req.params;
         const { description, startDate, endDate, isActive } = req.body;
@@ -724,10 +724,27 @@ router.patch('/submission-period/:id', async (req, res) => {
     }
 });
 
+// Delete submission period (admin)
+router.delete('/submission-period/:id', authenticate, authorize(PERMISSIONS.MANAGE_PERIODS), async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const period = await SubmissionPeriodModel.findByIdAndDelete(id);
+        if (!period) {
+            return res.status(404).json({ message: 'Submission period not found' });
+        }
+
+        res.json({ message: 'Submission period deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting submission period:', error);
+        res.status(500).json({ message: 'Error deleting submission period' });
+    }
+});
+
 // ============ ADMIN USER MANAGEMENT ROUTES ============
 
 // Get all users (admin only)
-router.get('/all-users', async (req, res) => {
+router.get('/all-users', authenticate, authorize(PERMISSIONS.MANAGE_USERS), async (req, res) => {
     try {
         const users = await UserModel.find({ email: { $ne: SUPER_ADMIN_EMAIL } })
             .select('-password')
@@ -740,7 +757,7 @@ router.get('/all-users', async (req, res) => {
 });
 
 // Update user (admin only)
-router.patch('/update-user/:userId', async (req, res) => {
+router.patch('/update-user/:userId', authenticate, authorize(PERMISSIONS.MANAGE_USERS), async (req, res) => {
     try {
         const { userId } = req.params;
         const { name, role, unit, userType, isApproved, isActive } = req.body;
@@ -779,7 +796,7 @@ router.patch('/update-user/:userId', async (req, res) => {
 });
 
 // Delete user (admin only)
-router.delete('/delete-user/:userId', async (req, res) => {
+router.delete('/delete-user/:userId', authenticate, authorize(PERMISSIONS.MANAGE_USERS), async (req, res) => {
     try {
         const { userId } = req.params;
 

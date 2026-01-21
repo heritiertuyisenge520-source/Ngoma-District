@@ -7,6 +7,8 @@ import AnalyticsView from './views/AnalyticsView';
 import TargetView from './views/TargetView';
 import PowerPointView from './views/PowerPointView';
 import ProgressCalculatorView from './views/ProgressCalculatorView';
+import IndicatorFormulaView from './views/IndicatorFormulaView';
+import DocumentUploadView from './views/DocumentUploadView';
 import ResponsesView from './views/ResponsesView';
 import SubmittedDataView from './views/SubmittedDataView';
 import LoginView from './views/LoginView';
@@ -19,6 +21,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { MonitoringEntry } from './types';
 import { API_ENDPOINTS, getAssignedIndicatorsUrl } from './config/api';
 import { PILLARS, INDICATORS } from './data';
+import { authGet, authPut, authDelete } from './utils/authFetch';
 
 const STORAGE_KEYS = {
   USER: 'imihigo_user',
@@ -59,17 +62,21 @@ const App: React.FC = () => {
 
   const fetchEntries = useCallback(async () => {
     try {
-      const response = await fetch(API_ENDPOINTS.SUBMISSIONS);
-      if (response.ok) setEntries(await response.json());
+      const response = await authGet(API_ENDPOINTS.SUBMISSIONS);
+      setEntries(await response.json());
     } catch (err) {
-      console.error(err);
+      console.error('Error fetching entries:', err);
     }
   }, []);
 
   const fetchAssignedIndicators = useCallback(async () => {
     if (user?.userType === 'employee' && user.email) {
-      const res = await fetch(getAssignedIndicatorsUrl(user.email));
-      if (res.ok) setAssignedIndicators(await res.json());
+      try {
+        const res = await authGet(getAssignedIndicatorsUrl(user.email));
+        setAssignedIndicators(await res.json());
+      } catch (err) {
+        console.error('Error fetching assigned indicators:', err);
+      }
     }
   }, [user]);
 
@@ -111,23 +118,7 @@ const App: React.FC = () => {
     }
 
     try {
-      // Get the authentication token from localStorage
-      const token = localStorage.getItem('authToken');
-
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      };
-
-      // Add authorization header if token exists
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const response = await fetch(`${API_ENDPOINTS.SUBMISSIONS}/${(entry as any)._id}`, {
-        method: 'PUT',
-        headers: headers,
-        body: JSON.stringify(entry)
-      });
+      const response = await authPut(`${API_ENDPOINTS.SUBMISSIONS}/${(entry as any)._id}`, entry);
 
       if (response.ok) {
         // Update the entry in the local state
@@ -151,22 +142,7 @@ const App: React.FC = () => {
 
     if (window.confirm('Are you sure you want to delete this entry? This action cannot be undone.')) {
       try {
-        // Get the authentication token from localStorage
-        const token = localStorage.getItem('authToken');
-
-        const headers: Record<string, string> = {
-          'Content-Type': 'application/json'
-        };
-
-        // Add authorization header if token exists
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
-
-        const response = await fetch(`${API_ENDPOINTS.SUBMISSIONS}/${id}`, {
-          method: 'DELETE',
-          headers: headers
-        });
+        const response = await authDelete(`${API_ENDPOINTS.SUBMISSIONS}/${id}`);
 
         if (response.ok) {
           // Remove the entry from local state
@@ -393,6 +369,8 @@ const App: React.FC = () => {
             {activeView === 'ppt' && <PowerPointView entries={entries} />}
             {activeView === 'preview' && <PreviewView entries={entries} />}
             {activeView === 'calculator' && <ProgressCalculatorView entries={entries} />}
+            {activeView === 'indicator-formula' && <IndicatorFormulaView entries={entries} />}
+            {activeView === 'document-upload' && <DocumentUploadView />}
             {activeView === 'approve-users' && <ApproveUsersView adminEmail={user.email} />}
             {activeView === 'assign-indicators' && <AssignIndicatorsView user={user} />}
             {activeView === 'data-change-requests' && <DataChangeRequestsView user={user} />}

@@ -6,11 +6,23 @@ import path from 'path';
 const router = Router();
 
 // Configure Cloudinary
+console.log('=== ENVIRONMENT VARIABLES DEBUG ===');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('PORT:', process.env.PORT);
+console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'SET' : 'NOT SET');
+console.log('=== CLOUDINARY VARIABLES ===');
+console.log('CLOUDINARY_CLOUD_NAME:', process.env.CLOUDINARY_CLOUD_NAME);
+console.log('CLOUDINARY_API_KEY:', process.env.CLOUDINARY_API_KEY);
+console.log('CLOUDINARY_API_SECRET:', process.env.CLOUDINARY_API_SECRET);
+console.log('=== END DEBUG ===');
+
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
+
+console.log('Cloudinary configured successfully');
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
@@ -34,10 +46,19 @@ const upload = multer({
 
 // Upload single file
 router.post('/upload', upload.single('file'), async (req: Request, res: Response) => {
+    console.log('=== SINGLE FILE UPLOAD ===');
+    console.log('Request headers:', req.headers);
+    console.log('File received:', req.file ? 'YES' : 'NO');
+    
     try {
         if (!req.file) {
+            console.log('ERROR: No file uploaded');
             return res.status(400).json({ message: 'No file uploaded' });
         }
+
+        console.log('Starting Cloudinary upload...');
+        console.log('File mimetype:', req.file.mimetype);
+        console.log('File size:', req.file.size);
 
         // Convert buffer to base64
         const b64 = Buffer.from(req.file.buffer).toString('base64');
@@ -46,12 +67,16 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
         // Determine resource type based on file type
         const resourceType = req.file.mimetype === 'application/pdf' ? 'raw' : 'image';
 
+        console.log('Uploading to Cloudinary with resource type:', resourceType);
+
         // Upload to Cloudinary
         const result = await cloudinary.uploader.upload(dataUri, {
             folder: 'imihigo-documents',
             resource_type: resourceType,
             public_id: `${Date.now()}-${path.parse(req.file.originalname).name}`,
         });
+
+        console.log('Cloudinary upload successful:', result);
 
         res.json({
             success: true,
@@ -62,10 +87,15 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
         });
 
     } catch (error) {
-        console.error('Upload error:', error);
+        console.error('=== UPLOAD ERROR ===');
+        console.error('Error details:', error);
+        console.error('Error message:', error instanceof Error ? error.message : 'Unknown error');
+        console.error('Error stack:', error instanceof Error ? error.stack : 'No stack available');
+        
         res.status(500).json({
             message: 'Failed to upload file',
-            error: error instanceof Error ? error.message : 'Unknown error'
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : 'No stack available'
         });
     }
 });

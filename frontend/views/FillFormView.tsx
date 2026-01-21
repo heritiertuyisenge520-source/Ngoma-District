@@ -56,15 +56,15 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
   const [comments, setComments] = useState('');
   const [showPercentageOnlyInput, setShowPercentageOnlyInput] = useState(false);
 
-  // Set default to percentage-only for percentage-based indicators
-  useEffect(() => {
-    // This effect will run after the component renders and selectedIndicator is available
-    // We need to check if selectedIndicator exists first
-    if (selectedIndicator?.measurementType === 'percentage' &&
-        !['74', '83', '87', '88', '101', '132', '69', '99'].includes(indicatorId)) {
-      setShowPercentageOnlyInput(true);
-    }
-  }, [indicatorId]); // Remove selectedIndicator from dependencies to avoid the initialization issue
+                // Set default to percentage-only for percentage-based indicators
+                useEffect(() => {
+                    // This effect will run after the component renders and selectedIndicator is available
+                    // We need to check if selectedIndicator exists first
+                    if (selectedIndicator?.measurementType === 'percentage' &&
+                        !['74', '83', '87', '88', '101', '132', '69', '99', '67', '89'].includes(indicatorId)) {
+                        setShowPercentageOnlyInput(false); // Force 3-box system for non-construction percentage indicators
+                    }
+                }, [indicatorId]); // Remove selectedIndicator from dependencies to avoid the initialization issue
 
   // Submission period state
   const [submissionPeriod, setSubmissionPeriod] = useState<SubmissionPeriod | null>(null);
@@ -654,16 +654,11 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                   )}
                 </h4>
 
-                {/* Percentage Only Toggle - Only show for generic percentage-based indicators */}
+                {/* Percentage Only Toggle - REMOVED to force 3-box system for non-construction percentage indicators */}
                 {selectedIndicator?.measurementType === 'percentage' &&
                   !['74', '83', '87', '88', '101', '132', '69', '99'].includes(indicatorId) && (
                   <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => setShowPercentageOnlyInput(true)}
-                      className={`flex-1 p-2 rounded-lg text-xs font-semibold transition-colors ${showPercentageOnlyInput ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}
-                    >
-                      Percentage Only
-                    </button>
+                    {/* Toggle button removed - now always showing 3-box system */}
                   </div>
                 )}
 
@@ -1574,6 +1569,69 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                       </div>
                     )}
 
+                    {/* Retaining Walls Construction Indicators - Percentage Only */}
+                    {indicatorId === '67' && (
+                      <div className="space-y-4 bg-gradient-to-br from-amber-50 to-yellow-50 p-5 rounded-xl border-2 border-amber-200">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                          </svg>
+                          <h4 className="font-bold text-amber-800 text-sm">Retaining Walls Construction Progress - Percentage Only</h4>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="block text-[10px] font-bold text-amber-700 uppercase tracking-wider">
+                            Percentage Completed
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              value={subValues['percentage'] ?? ''}
+                              onChange={(e) => handleSubValueChange('percentage', e.target.value)}
+                              placeholder="e.g. 75"
+                              className={`${inputClasses} placeholder:text-slate-300 bg-white flex-1`}
+                              min="0"
+                              max="100"
+                              step="0.1"
+                            />
+                            <span className="text-xl font-black text-amber-700">%</span>
+                          </div>
+                          <p className="text-[9px] text-slate-500">Enter percentage of retaining walls construction work completed (0-100)</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {indicatorId === '89' && (
+                      <div className="space-y-4 bg-gradient-to-br from-amber-50 to-yellow-50 p-5 rounded-xl border-2 border-amber-200">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                          </svg>
+                          <h4 className="font-bold text-amber-800 text-sm">Retaining Walls Construction Progress - Percentage Only</h4>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="block text-[10px] font-bold text-amber-700 uppercase tracking-wider">
+                            Percentage Completed
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              value={subValues['percentage'] ?? ''}
+                              onChange={(e) => handleSubValueChange('percentage', e.target.value)}
+                              placeholder="e.g. 75"
+                              className={`${inputClasses} placeholder:text-slate-300 bg-white flex-1`}
+                              min="0"
+                              max="100"
+                              step="0.1"
+                            />
+                            <span className="text-xl font-black text-amber-700">%</span>
+                          </div>
+                          <p className="text-[9px] text-slate-500">Enter percentage of retaining walls construction work completed (0-100)</p>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Student Attendance Indicator - Complex Calculation */}
                     {indicatorId === '101' && (
                       <div className="space-y-6 bg-gradient-to-br from-green-50 to-emerald-50 p-5 rounded-xl border-2 border-green-200">
@@ -1583,7 +1641,7 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v11.494m-9-5.747h18" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v11.494m-9-5.747h18" />
                           </svg>
-                          <h4 className="font-bold text-green-800 text-sm">Student Attendance - Multi-Category Calculation</h4>
+                          <h4 className="font-bold text-green-800 text-sm">Student Attendance</h4>
                         </div>
 
                         <div className="space-y-4">
@@ -1952,7 +2010,7 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
 
                     {/* Generic Percentage Calculation for other percentage indicators */}
                     {selectedIndicator?.measurementType === 'percentage' &&
-                      !['74', '83', '87', '88', '101', '132', '69', '99'].includes(indicatorId) && (
+                      !['74', '83', '87', '88', '101', '132', '69', '99', '67', '89'].includes(indicatorId) && (
                       <div className="space-y-4 bg-gradient-to-br from-blue-50 to-indigo-50 p-5 rounded-xl border-2 border-blue-200">
                         <div className="flex items-center space-x-2 mb-2">
                           <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1961,89 +2019,70 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                           <h4 className="font-bold text-blue-800 text-sm">Percentage Calculation</h4>
                         </div>
 
-                        {!showPercentageOnlyInput ? (
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {/* Denominator (Target) */}
-                            <div className="space-y-1.5">
-                              <label className="block text-[10px] font-bold text-blue-700 uppercase tracking-wider">
-                                Denominator (Target)
-                              </label>
-                              <input
-                                type="number"
-                                value={subValues['target_pop'] ?? ''}
-                                onChange={(e) => handleSubValueChange('target_pop', e.target.value)}
-                                placeholder="e.g. 10000"
-                                className={`${inputClasses} placeholder:text-slate-300 bg-white`}
-                                min="1"
-                              />
-                              <p className="text-[9px] text-slate-500">Total target population</p>
-                            </div>
-
-                            {/* Numerator (Achieved) */}
-                            <div className="space-y-1.5">
-                              <label className="block text-[10px] font-bold text-blue-700 uppercase tracking-wider">
-                                Numerator (Achieved)
-                              </label>
-                              <input
-                                type="number"
-                                value={subValues['achieved_pop'] ?? ''}
-                                onChange={(e) => handleSubValueChange('achieved_pop', e.target.value)}
-                                placeholder="e.g. 2000"
-                                className={`${inputClasses} placeholder:text-slate-300 bg-white`}
-                                min="0"
-                              />
-                              <p className="text-[9px] text-slate-500">Number achieved so far</p>
-                            </div>
-
-                            {/* Calculated Percentage */}
-                            <div className="space-y-1.5">
-                              <label className="block text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
-                                Calculated Percentage
-                              </label>
-                              <div className={`h-12 px-4 rounded-xl border-2 ${Number(subValues['target_pop']) > 0
-                                ? 'border-emerald-300 bg-emerald-50'
-                                : 'border-slate-200 bg-slate-100'
-                                } flex items-center`}>
-                                <span className={`text-xl font-black ${Number(subValues['target_pop']) > 0
-                                  ? 'text-emerald-600'
-                                  : 'text-slate-400'
-                                  }`}>
-                                  {Number(subValues['target_pop']) > 0 && subValues['achieved_pop'] !== undefined
-                                    ? ((Number(subValues['achieved_pop']) / Number(subValues['target_pop'])) * 100).toFixed(1)
-                                    : '0.0'}%
-                                </span>
-                              </div>
-                              <p className="text-[9px] text-emerald-600 font-bold">Auto-calculated from inputs</p>
-                            </div>
-                          </div>
-                        ) : (
+                        {/* FORCE 3-BOX SYSTEM - Always show denominator, numerator, and auto-calculated percentage */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          {/* Denominator (Target) */}
                           <div className="space-y-1.5">
                             <label className="block text-[10px] font-bold text-blue-700 uppercase tracking-wider">
-                              Percentage Completed
+                              Denominator (Target)
                             </label>
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="number"
-                                value={subValues['percentage'] ?? ''}
-                                onChange={(e) => handleSubValueChange('percentage', e.target.value)}
-                                placeholder="e.g. 75"
-                                className={`${inputClasses} placeholder:text-slate-300 bg-white flex-1`}
-                                min="0"
-                                max="100"
-                                step="0.1"
-                              />
-                              <span className="text-xl font-black text-blue-700">%</span>
-                            </div>
-                            <p className="text-[9px] text-slate-500">Enter percentage directly (0-100)</p>
+                            <input
+                              type="number"
+                              value={subValues['target_pop'] ?? ''}
+                              onChange={(e) => handleSubValueChange('target_pop', e.target.value)}
+                              placeholder="e.g. 10000"
+                              className={`${inputClasses} placeholder:text-slate-300 bg-white`}
+                              min="1"
+                              required
+                            />
+                            <p className="text-[9px] text-slate-500">Total target population</p>
                           </div>
-                        )}
+
+                          {/* Numerator (Achieved) */}
+                          <div className="space-y-1.5">
+                            <label className="block text-[10px] font-bold text-blue-700 uppercase tracking-wider">
+                              Numerator (Achieved)
+                            </label>
+                            <input
+                              type="number"
+                              value={subValues['achieved_pop'] ?? ''}
+                              onChange={(e) => handleSubValueChange('achieved_pop', e.target.value)}
+                              placeholder="e.g. 2000"
+                              className={`${inputClasses} placeholder:text-slate-300 bg-white`}
+                              min="0"
+                              required
+                            />
+                            <p className="text-[9px] text-slate-500">Number achieved so far</p>
+                          </div>
+
+                          {/* Calculated Percentage */}
+                          <div className="space-y-1.5">
+                            <label className="block text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
+                              Calculated Percentage
+                            </label>
+                            <div className={`h-12 px-4 rounded-xl border-2 ${Number(subValues['target_pop']) > 0
+                              ? 'border-emerald-300 bg-emerald-50'
+                              : 'border-slate-200 bg-slate-100'
+                              } flex items-center`}>
+                              <span className={`text-xl font-black ${Number(subValues['target_pop']) > 0
+                                ? 'text-emerald-600'
+                                : 'text-slate-400'
+                                }`}>
+                                {Number(subValues['target_pop']) > 0 && subValues['achieved_pop'] !== undefined
+                                  ? ((Number(subValues['achieved_pop']) / Number(subValues['target_pop'])) * 100).toFixed(1)
+                                  : '0.0'}%
+                              </span>
+                            </div>
+                            <p className="text-[9px] text-emerald-600 font-bold">Auto-calculated from inputs</p>
+                          </div>
+                        </div>
 
                         <div className="mt-3 p-3 bg-white/70 rounded-lg border border-blue-100">
                           <p className="text-[10px] text-blue-700 font-semibold">
-                            <span className="font-black">Formula:</span> {showPercentageOnlyInput ? 'Enter percentage directly' : '(Numerator ÷ Denominator) × 100 = Percentage'}
+                            <span className="font-black">Formula:</span> (Numerator ÷ Denominator) × 100 = Percentage
                           </p>
                           <p className="text-[9px] text-slate-500 mt-1">
-                            This {showPercentageOnlyInput ? 'percentage' : 'calculated percentage'} will be compared against the fixed target for progress tracking.
+                            This calculated percentage will be compared against the fixed target for progress tracking.
                           </p>
                         </div>
                       </div>
