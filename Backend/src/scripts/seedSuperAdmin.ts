@@ -19,7 +19,10 @@ const SUPER_ADMIN = {
 
 const seedSuperAdmin = async () => {
     try {
-        const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/imihigo-db';
+        const mongoUri = process.env.MONGODB_URI;
+        if (!mongoUri) {
+            throw new Error('MONGODB_URI environment variable is not set');
+        }
 
         console.log('Connecting to MongoDB...');
         await mongoose.connect(mongoUri);

@@ -1,5 +1,6 @@
 import express from 'express';
 import { EntryModel, PillarModel } from '../models';
+import { calculateEmployeeProgress } from '../utils/progressCalculator';
 
 const router = express.Router();
 
@@ -195,6 +196,26 @@ router.get('/progress', async (req, res) => {
     } catch (error) {
         console.error('Error calculating progress:', error);
         res.status(500).json({ message: 'Error calculating progress' });
+    }
+});
+
+// Get employee progress for their assigned indicators
+router.get('/employee-progress/:email', async (req, res) => {
+    try {
+        const { email } = req.params;
+        
+        if (!email) {
+            return res.status(400).json({ message: 'Email is required' });
+        }
+
+        const progressData = await calculateEmployeeProgress(email);
+        res.json(progressData);
+    } catch (error: any) {
+        console.error('Error fetching employee progress:', error);
+        res.status(500).json({ 
+            message: 'Error fetching employee progress', 
+            error: error.message 
+        });
     }
 });
 

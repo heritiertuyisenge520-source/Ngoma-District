@@ -1,7 +1,10 @@
-// API Configuration - using production backend
+// API Configuration - using environment variable
 const getApiUrl = (): string => {
-    // Use environment variable if set, otherwise use production backend URL
-    return import.meta.env.VITE_API_URL || 'https://full-system-8.onrender.com';
+    const apiUrl = import.meta.env.VITE_API_URL;
+    if (!apiUrl) {
+        throw new Error('VITE_API_URL environment variable is not set');
+    }
+    return apiUrl;
 };
 
 export const API_BASE_URL = getApiUrl();
@@ -51,6 +54,7 @@ export const API_ENDPOINTS = {
 
     // Data endpoints
     SUBMISSIONS: `${API_BASE_URL}/api/submissions`,
+    DASHBOARD: `${API_BASE_URL}/api/submissions/dashboard`,
     ENTRIES: `${API_BASE_URL}/api/entries`,
     METADATA: `${API_BASE_URL}/api/metadata`,
     CLEAR_DATA: `${API_BASE_URL}/api/clear-data`,

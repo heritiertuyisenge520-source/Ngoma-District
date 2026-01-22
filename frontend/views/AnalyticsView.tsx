@@ -73,6 +73,8 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
   // Group entries by indicator for efficiency
   const entriesByIndicator = useMemo(() => {
     const grouped: Record<string, MonitoringEntry[]> = {};
+    if (!Array.isArray(entries)) return grouped;
+    
     entries.forEach(e => {
       if (!grouped[e.indicatorId]) grouped[e.indicatorId] = [];
       grouped[e.indicatorId].push(e);

@@ -6,54 +6,7 @@ import jsPDF from 'jspdf';
 
 const router = express.Router();
 
-// Get all submissions for dashboard (employees get aggregated view)
-router.get('/dashboard', authenticate, async (req: AuthenticatedRequest, res) => {
-    try {
-        let query: any = {};
-        
-        // Apply role-based filtering for dashboard
-        if (req.user?.userType === 'employee') {
-            // Employees see all submissions but without sensitive user info
-            // Remove the submittedBy filter to show all data for dashboard
-            // We'll handle user privacy in response transformation
-        } else if (req.user?.userType === 'head') {
-            // Heads can see submissions from their unit
-            // We'll need to add unit field to submissions for this to work properly
-            // For now, heads can see all submissions (will be filtered on frontend)
-        }
-        // Super admins can see all submissions (no filtering)
-
-        const submissions = await SubmissionModel.find(query)
-            .sort({ timestamp: -1 })
-            .lean();
-
-        // Transform submissions for dashboard view
-        const entries = submissions.map(sub => ({
-            _id: sub._id.toString(),
-            pillarId: sub.pillarId,
-            outputId: '', // Not in SubmissionModel, will need to be added if needed
-            indicatorId: sub.indicatorId,
-            quarterId: sub.quarterId,
-            month: sub.month,
-            value: sub.value,
-            targetValue: sub.targetValue,
-            subValues: sub.subValues,
-            comments: sub.comments,
-            timestamp: sub.timestamp,
-            // For employees, hide or anonymize submitter info
-            submittedBy: req.user?.userType === 'employee' ? 'Employee' : sub.submittedBy,
-            pillarName: sub.pillarName,
-            indicatorName: sub.indicatorName
-        }));
-
-        res.json(entries);
-    } catch (error: any) {
-        console.error('Error fetching dashboard submissions:', error);
-        res.status(500).json({ message: 'Error fetching dashboard submissions', error: error.message });
-    }
-});
-
-// Get all submissions (with role-based filtering for individual views)
+// Get all submissions
 router.get('/', authenticate, authorizeSubmissionAccess, async (req: AuthenticatedRequest, res) => {
     try {
         let query: any = {};

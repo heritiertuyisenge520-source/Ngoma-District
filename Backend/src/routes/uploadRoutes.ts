@@ -6,23 +6,11 @@ import path from 'path';
 const router = Router();
 
 // Configure Cloudinary
-console.log('=== ENVIRONMENT VARIABLES DEBUG ===');
-console.log('NODE_ENV:', process.env.NODE_ENV);
-console.log('PORT:', process.env.PORT);
-console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'SET' : 'NOT SET');
-console.log('=== CLOUDINARY VARIABLES ===');
-console.log('CLOUDINARY_CLOUD_NAME:', process.env.CLOUDINARY_CLOUD_NAME);
-console.log('CLOUDINARY_API_KEY:', process.env.CLOUDINARY_API_KEY);
-console.log('CLOUDINARY_API_SECRET:', process.env.CLOUDINARY_API_SECRET);
-console.log('=== END DEBUG ===');
-
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
-
-console.log('Cloudinary configured successfully');
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();

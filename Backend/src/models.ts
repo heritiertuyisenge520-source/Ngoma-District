@@ -44,7 +44,8 @@ export const UNITS = [
     'Planning, Monitoring and Evaluation Unit',
     'HR and Administration Unit',
     'Finance Unit',
-    'Internal Audit'
+    'Internal Audit',
+    'Audit Unit'
 ] as const;
 
 export type UnitType = typeof UNITS[number];

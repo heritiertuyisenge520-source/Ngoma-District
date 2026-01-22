@@ -17,6 +17,7 @@ import AssignIndicatorsView from './views/AssignIndicatorsView';
 import DataChangeRequestsView from './views/DataChangeRequestsView';
 import MonitorSubmitView from './views/MonitorSubmitView';
 import ManageUsersView from './views/ManageUsersView';
+import IndicatorProgressView from './views/IndicatorProgressView';
 import ErrorBoundary from './components/ErrorBoundary';
 import { MonitoringEntry } from './types';
 import { API_ENDPOINTS, getAssignedIndicatorsUrl } from './config/api';
@@ -62,12 +63,23 @@ const App: React.FC = () => {
 
   const fetchEntries = useCallback(async () => {
     try {
-      const response = await authGet(API_ENDPOINTS.SUBMISSIONS);
-      setEntries(await response.json());
+      // Use dashboard endpoint for main analytics view
+      const endpoint = activeView === 'analytics' ? API_ENDPOINTS.DASHBOARD : API_ENDPOINTS.SUBMISSIONS;
+      const response = await authGet(endpoint);
+      
+      if (!response.ok) {
+        console.error('API response not ok:', response.status, response.statusText);
+        setEntries([]);
+        return;
+      }
+      
+      const data = await response.json();
+      setEntries(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error fetching entries:', err);
+      setEntries([]); // Set empty array on error to prevent forEach errors
     }
-  }, []);
+  }, [activeView]);
 
   const fetchAssignedIndicators = useCallback(async () => {
     if (user?.userType === 'employee' && user.email) {
@@ -365,6 +377,7 @@ const App: React.FC = () => {
             )}
             {activeView === 'responses' && <ResponsesView entries={entries} user={user} onEdit={handleEditEntry} onDelete={handleDeleteEntry} />}
             {activeView === 'submitted-data' && <SubmittedDataView entries={entries} user={user} onDelete={handleDeleteEntry} onEdit={handleEditEntry} onDownload={handleDownloadEntry} />}
+            {activeView === 'indicator-progress' && <IndicatorProgressView user={user} />}
             {activeView === 'targets' && <TargetView />}
             {activeView === 'ppt' && <PowerPointView entries={entries} />}
             {activeView === 'preview' && <PreviewView entries={entries} />}

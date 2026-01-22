@@ -25,9 +25,8 @@ app.use((req, res, next) => {
         'http://localhost:3000',
         'http://localhost:3001',
         'http://localhost:5173',
-        'https://full-system-three.vercel.app',
-        'https://imihigo-tracking-tool-g98x.vercel.app'
-    ];
+        process.env.FRONTEND_URL
+    ].filter(Boolean) as string[];
 
     if (origin && allowedOrigins.includes(origin)) {
         res.setHeader('Access-Control-Allow-Origin', origin);
@@ -45,7 +44,7 @@ app.use((req, res, next) => {
 
 // CORS middleware as backup
 app.use(cors({
-    origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173', 'https://full-system-three.vercel.app', 'https://imihigo-tracking-tool-g98x.vercel.app'],
+    origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173', process.env.FRONTEND_URL].filter(Boolean) as string[],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
