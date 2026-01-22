@@ -30,7 +30,7 @@ const UserSubmittedView: React.FC<UserSubmittedViewProps> = ({ user }) => {
     setDownloadingId(id);
     try {
       const token = localStorage.getItem('authToken');
-      const baseUrl = import.meta.env.VITE_API_URL || 'https://full-system-8.onrender.com';
+      const baseUrl = import.meta.env.VITE_API_URL;
       const url = `${baseUrl}/api/submissions/${id}/pdf`;
 
       const response = await fetch(url, {
@@ -70,7 +70,7 @@ const UserSubmittedView: React.FC<UserSubmittedViewProps> = ({ user }) => {
         console.log('Attempting to delete submission:', entryId);
         const deleteUrl = `/api/submissions/${entryId}`;
         console.log('Delete URL:', deleteUrl);
-        console.log('Full delete URL:', `${import.meta.env.VITE_API_URL || 'https://full-system-8.onrender.com'}${deleteUrl}`);
+        console.log('Full delete URL:', `${import.meta.env.VITE_API_URL}${deleteUrl}`);
         
         const response = await authDelete(deleteUrl);
         console.log('Delete response status:', response.status);
@@ -101,7 +101,7 @@ const UserSubmittedView: React.FC<UserSubmittedViewProps> = ({ user }) => {
       console.log('Attempting to update submission:', editingEntry._id);
       const updateUrl = `/api/submissions/${editingEntry._id}`;
       console.log('Update URL:', updateUrl);
-      console.log('Full update URL:', `${import.meta.env.VITE_API_URL || 'https://full-system-8.onrender.com'}${updateUrl}`);
+      console.log('Full update URL:', `${import.meta.env.VITE_API_URL}${updateUrl}`);
       console.log('Update data:', editingEntry);
       
       const response = await authPut(updateUrl, {
@@ -143,7 +143,7 @@ const UserSubmittedView: React.FC<UserSubmittedViewProps> = ({ user }) => {
         
         const response = await authGet('/api/submissions');
         console.log('Calling API URL:', '/api/submissions');
-        console.log('Full API URL:', `${import.meta.env.VITE_API_URL || 'https://full-system-8.onrender.com'}/api/submissions`);
+        console.log('Full API URL:', `${import.meta.env.VITE_API_URL}/api/submissions`);
         console.log('API Response status:', response.status);
         console.log('API Response ok:', response.ok);
         
