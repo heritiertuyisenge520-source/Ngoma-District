@@ -84,46 +84,116 @@ router.get('/trends', async (req, res) => {
 // Get overall progress by pillar
 router.get('/progress', async (req, res) => {
     try {
+        const { quarterId } = req.query; // q1, q2, q3, q4, or undefined for all quarters
         const pillars = await PillarModel.find({});
+
+        // Import indicator data and progress utilities
+        const { INDICATORS, PILLARS } = require('../data/indicators');
+        const { calculateQuarterProgress } = require('../utils/progressUtils');
+
+        // Get total indicators across all pillars (126)
+        const totalIndicatorsAcrossAllPillars = INDICATORS.length;
 
         const progressData = await Promise.all(
             pillars.map(async (pillar) => {
+                // Find pillar data to get indicators
+                const pillarData = PILLARS.find((p: any) => p.id === pillar.id);
+                if (!pillarData) {
+                    return {
+                        pillarId: pillar.id,
+                        pillarName: pillar.name,
+                        progress: 0,
+                        annualProgress: 0,
+                        quarterId: quarterId || 'all',
+                        error: 'Pillar data not found'
+                    };
+                }
+
+                // Get all indicators for this pillar
+                const pillarIndicators = pillarData.outputs.flatMap((output: any) => output.indicators);
+                const pillarIndicatorCount = pillarIndicators.length;
+
                 // Get all entries for this pillar
                 const entries = await EntryModel.find({
                     pillarId: pillar.id,
                     isDeleted: false
                 });
 
-                if (entries.length === 0) {
+                if (entries.length === 0 || pillarIndicators.length === 0) {
                     return {
                         pillarId: pillar.id,
                         pillarName: pillar.name,
                         progress: 0,
-                        totalEntries: 0
+                        annualProgress: 0,
+                        quarterId: quarterId || 'all',
+                        indicatorSum: 0,
+                        pillarIndicatorCount: pillarIndicatorCount
                     };
                 }
 
-                // Calculate progress based on value vs target
-                const entriesWithProgress = entries.map(entry => {
-                    const progress = entry.targetValue
-                        ? Math.min(100, (entry.value / entry.targetValue) * 100)
-                        : 100;
-                    return progress;
-                });
+                // Calculate progress for each quarter
+                const quarters = quarterId ? [quarterId] : ['q1', 'q2', 'q3', 'q4'];
+                const results = [];
 
-                const avgProgress = entriesWithProgress.reduce((sum, p) => sum + p, 0) / entriesWithProgress.length;
+                for (const qId of quarters) {
+                    let indicatorProgressSum = 0;
 
-                return {
-                    pillarId: pillar.id,
-                    pillarName: pillar.name,
-                    progress: parseFloat(avgProgress.toFixed(2)),
-                    totalEntries: entries.length
-                };
+                    // Calculate progress for each indicator in this pillar for this quarter
+                    for (const indicator of pillarIndicators) {
+                        // Get entries for this specific indicator and quarter
+                        const indicatorEntries = entries.filter(e => 
+                            e.indicatorId === indicator.id && e.quarterId === qId
+                        );
+
+                        if (indicatorEntries.length > 0) {
+                            // Calculate indicator progress using existing logic
+                            const progressResult = calculateQuarterProgress({
+                                indicator,
+                                entries: indicatorEntries,
+                                quarterId: qId,
+                                monthsInQuarter: qId === 'q1' ? ['July', 'August', 'September'] :
+                                               qId === 'q2' ? ['October', 'November', 'December'] :
+                                               qId === 'q3' ? ['January', 'February', 'March'] :
+                                               ['April', 'May', 'June']
+                            });
+
+                            indicatorProgressSum += progressResult.performance;
+                        }
+                    }
+
+                    // Calculate pillar progress (sum / pillar indicators)
+                    const pillarProgress = pillarIndicatorCount > 0 ? 
+                        (indicatorProgressSum / pillarIndicatorCount) : 0;
+
+                    // Calculate annual progress (sum / total indicators across all pillars)
+                    const annualProgress = totalIndicatorsAcrossAllPillars > 0 ? 
+                        (indicatorProgressSum / totalIndicatorsAcrossAllPillars) : 0;
+
+                    results.push({
+                        pillarId: pillar.id,
+                        pillarName: pillar.name,
+                        quarterId: qId,
+                        pillarProgress: parseFloat(pillarProgress.toFixed(2)),
+                        annualProgress: parseFloat(annualProgress.toFixed(2)),
+                        indicatorSum: parseFloat(indicatorProgressSum.toFixed(2)),
+                        pillarIndicatorCount: pillarIndicatorCount,
+                        totalIndicatorsAcrossAllPillars: totalIndicatorsAcrossAllPillars
+                    });
+                }
+
+                // Return single result if specific quarter requested, otherwise return all quarters
+                return quarterId ? results[0] : results;
             })
         );
 
-        res.json(progressData);
+        // Flatten results if all quarters were requested
+        const flattenedResults = quarterId ? 
+            progressData : 
+            progressData.flat();
+
+        res.json(flattenedResults);
     } catch (error) {
+        console.error('Error calculating progress:', error);
         res.status(500).json({ message: 'Error calculating progress' });
     }
 });

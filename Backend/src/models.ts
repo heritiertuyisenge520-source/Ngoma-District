@@ -397,3 +397,96 @@ SubmissionPeriodSchema.pre('save', function (next) {
 });
 
 export const SubmissionPeriodModel = mongoose.model<ISubmissionPeriod>('SubmissionPeriod', SubmissionPeriodSchema, 'SubmissionPeriods');
+
+// Announcement Interface
+export interface IAnnouncement extends Document {
+    message: string;
+    audience: 'all' | 'unit' | 'planning_head';
+    targetUnit?: string;
+    createdByEmail: string;
+    createdByName: string;
+    createdAt: Date;
+}
+
+// Announcement Schema
+const AnnouncementSchema = new Schema({
+    message: { type: String, required: true, maxlength: 2000 },
+    audience: { type: String, enum: ['all', 'unit', 'planning_head'], required: true },
+    targetUnit: { type: String },
+    createdByEmail: { type: String, required: true },
+    createdByName: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now }
+});
+
+// Indexes for efficient queries
+AnnouncementSchema.index({ audience: 1, targetUnit: 1 });
+AnnouncementSchema.index({ createdAt: -1 });
+
+export const AnnouncementModel = mongoose.model<IAnnouncement>('Announcement', AnnouncementSchema, 'Announcements');
+
+// Flat Indicator Interface (for migration scripts)
+export interface IFlatIndicator extends Document {
+    id: string;
+    name: string;
+    pillarId: string;
+    pillarName: string;
+    outputId: string;
+    outputName: string;
+    isDual: boolean;
+    measurementType: 'cumulative' | 'percentage';
+    targets: {
+        q1: string | number;
+        q2: string | number;
+        q3: string | number;
+        q4: string | number;
+        annual: string | number;
+    };
+    subIndicators?: Array<{
+        key: string;
+        name: string;
+        targets: {
+            q1: string | number;
+            q2: string | number;
+            q3: string | number;
+            q4: string | number;
+            annual: string | number;
+        };
+    }>;
+}
+
+// Flat Indicator Schema
+const FlatIndicatorSchema = new Schema({
+    id: { type: String, required: true, unique: true },
+    name: { type: String, required: true },
+    pillarId: { type: String, required: true },
+    pillarName: { type: String, required: true },
+    outputId: { type: String, required: true },
+    outputName: { type: String, required: true },
+    isDual: { type: Boolean, default: false },
+    measurementType: { type: String, enum: ['cumulative', 'percentage'], required: true },
+    targets: {
+        q1: { type: Schema.Types.Mixed, default: 0 },
+        q2: { type: Schema.Types.Mixed, default: 0 },
+        q3: { type: Schema.Types.Mixed, default: 0 },
+        q4: { type: Schema.Types.Mixed, default: 0 },
+        annual: { type: Schema.Types.Mixed, default: 0 }
+    },
+    subIndicators: [{
+        key: { type: String, required: true },
+        name: { type: String, required: true },
+        targets: {
+            q1: { type: Schema.Types.Mixed, default: 0 },
+            q2: { type: Schema.Types.Mixed, default: 0 },
+            q3: { type: Schema.Types.Mixed, default: 0 },
+            q4: { type: Schema.Types.Mixed, default: 0 },
+            annual: { type: Schema.Types.Mixed, default: 0 }
+        }
+    }]
+});
+
+// Indexes for efficient queries
+FlatIndicatorSchema.index({ pillarId: 1 });
+FlatIndicatorSchema.index({ outputId: 1 });
+FlatIndicatorSchema.index({ id: 1 });
+
+export const FlatIndicatorModel = mongoose.model<IFlatIndicator>('FlatIndicator', FlatIndicatorSchema, 'FlatIndicators');
