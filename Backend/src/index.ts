@@ -21,11 +21,12 @@ const PORT = process.env.PORT || 5000;
 // Manual CORS headers - set before anything else
 app.use((req, res, next) => {
     const origin = req.headers.origin;
+    const frontendUrl = process.env.FRONTEND_URL?.replace(/\/$/, ''); // Remove trailing slash
     const allowedOrigins = [
         'http://localhost:3000',
         'http://localhost:3001',
         'http://localhost:5173',
-        process.env.FRONTEND_URL
+        frontendUrl
     ].filter(Boolean) as string[];
 
     if (origin && allowedOrigins.includes(origin)) {
@@ -44,7 +45,7 @@ app.use((req, res, next) => {
 
 // CORS middleware as backup
 app.use(cors({
-    origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173', process.env.FRONTEND_URL].filter(Boolean) as string[],
+    origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173', process.env.FRONTEND_URL?.replace(/\/$/, '')].filter(Boolean) as string[],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
