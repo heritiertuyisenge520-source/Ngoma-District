@@ -1,0 +1,12 @@
+MANUAL FIX REQUIRED:
+
+In file: frontend/views/FillFormView.tsx
+Line 64 needs to be changed FROM:
+
+!['74', '83', '87', '88', '101', '132', '69', '99', '67', '89'].includes(indicatorId)
+
+TO:
+
+!['74', '83', '87', '88', '101', '132', '69', '99', '67', '89', '43'].includes(indicatorId)
+
+This will add indicator '43' (Nyuruvumu Gahushyi-Gituku feeder road) to the percentage-only list.
