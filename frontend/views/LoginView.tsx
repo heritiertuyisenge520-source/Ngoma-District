@@ -108,7 +108,8 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
         'Secondary and TVET Education Officer',
         'Community Base Health Insurance Officer',
         'Imihigo Coach',
-        'Legal Advisor and Notary'
+        'Legal Advisor and Notary',
+        'ECD officer'
     ];
 
     const handleSubmit = async (e: React.FormEvent) => {

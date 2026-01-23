@@ -647,7 +647,7 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
               <div className="bg-slate-50 p-5 md:p-6 rounded-2xl border-2 border-slate-200 space-y-4">
                 <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex justify-between items-center">
                   <span>achievements</span>
-                  {selectedIndicator && quarterId && (
+                  {selectedIndicator && quarterId && !selectedIndicator.isDual && (
                     <span className="text-red-600 font-bold bg-red-50 px-2 py-0.5 rounded border border-red-100 italic normal-case tracking-normal">
                       Fixed Target: {selectedPillar?.outputs.flatMap(o => o.indicators).find(i => i.id === indicatorId)?.targets[quarterId as keyof Indicator['targets']] || 0}
                     </span>
