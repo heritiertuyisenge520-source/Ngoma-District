@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { API_ENDPOINTS, getRejectUserUrl } from '../config/api';
+import { authFetch } from '../utils/authFetch';
 
 interface PendingUser {
     _id: string;
@@ -39,7 +40,7 @@ const ApproveUsersView: React.FC<ApproveUsersViewProps> = ({ adminEmail }) => {
     const fetchPendingUsers = async () => {
         try {
             setIsLoading(true);
-            const response = await fetch(API_ENDPOINTS.PENDING_USERS);
+            const response = await authFetch(API_ENDPOINTS.PENDING_USERS);
             if (response.ok) {
                 const data = await response.json();
                 setPendingUsers(data);
@@ -71,9 +72,8 @@ const ApproveUsersView: React.FC<ApproveUsersViewProps> = ({ adminEmail }) => {
 
         try {
             setProcessingUser(userId);
-            const response = await fetch(API_ENDPOINTS.APPROVE_USER, {
+            const response = await authFetch(API_ENDPOINTS.APPROVE_USER, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userId,
                     unit,
@@ -104,7 +104,7 @@ const ApproveUsersView: React.FC<ApproveUsersViewProps> = ({ adminEmail }) => {
 
         try {
             setProcessingUser(userId);
-            const response = await fetch(getRejectUserUrl(userId), {
+            const response = await authFetch(getRejectUserUrl(userId), {
                 method: 'DELETE'
             });
 

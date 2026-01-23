@@ -44,7 +44,6 @@ const PreviewView: React.FC<PreviewViewProps> = ({ entries }) => {
                 <th className="px-6 py-5 text-[11px] font-bold text-slate-700 uppercase tracking-widest">Pillar</th>
                 <th className="px-6 py-5 text-[11px] font-bold text-slate-700 uppercase tracking-widest">Indicator</th>
                 <th className="px-6 py-5 text-[11px] font-bold text-slate-700 uppercase tracking-widest">Period</th>
-                <th className="px-6 py-5 text-[11px] font-bold text-slate-700 uppercase tracking-widest text-right">Target</th>
                 <th className="px-6 py-5 text-[11px] font-bold text-slate-700 uppercase tracking-widest text-right">Achievement</th>
                 <th className="px-6 py-5 text-[11px] font-bold text-slate-700 uppercase tracking-widest">Status</th>
               </tr>
@@ -66,11 +65,6 @@ const PreviewView: React.FC<PreviewViewProps> = ({ entries }) => {
                         <span className="text-xs font-medium text-slate-600">{entry.month} ({entry.quarterId.toUpperCase()})</span>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <span className="text-sm font-bold text-amber-600">
-                          {entry.targetValue !== undefined ? entry.targetValue.toLocaleString() : '-'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
                         <span className="text-sm font-black text-blue-700">{entry.value.toLocaleString()}</span>
                       </td>
                       <td className="px-6 py-4">
@@ -81,7 +75,7 @@ const PreviewView: React.FC<PreviewViewProps> = ({ entries }) => {
                 })
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-24 text-center">
+                  <td colSpan={5} className="px-6 py-24 text-center">
                     <div className="flex flex-col items-center">
                       <div className="bg-slate-50 p-4 rounded-full mb-3">
                         <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>

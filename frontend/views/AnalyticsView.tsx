@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { PILLARS, QUARTERS, Indicator } from '../data';
+import { INDICATORS, PILLARS, QUARTERS, Indicator } from '../data';
 import { MonitoringEntry } from '../types';
 import { calculateQuarterProgress, calculateAnnualProgress, getIndicatorUnit } from '../utils/progressUtils';
 import jsPDF from 'jspdf';
@@ -87,12 +87,12 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
 
   // Pillar level stats
   const pillarStats = useMemo(() => {
+    const totalIndicatorsAcrossAllPillars = INDICATORS.length;
     return PILLARS.map(pillar => {
       const pillarIndicators = pillar.outputs.flatMap(o => o.indicators || []);
       if (pillarIndicators.length === 0) return { ...pillar, q: 0, a: 0 };
 
       let totalQuarterPerf = 0;
-      let totalAnnualPerf = 0;
 
       pillarIndicators.forEach(indicator => {
         const indicatorEntries = entriesByIndicator[indicator.id] || [];
@@ -102,15 +102,16 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
           quarterId: selectedQuarter?.id || 'q1',
           monthsInQuarter: selectedQuarter?.months || []
         });
-        const aPerf = calculateAnnualProgress(indicator, indicatorEntries);
         totalQuarterPerf += qResult.performance;
-        totalAnnualPerf += aPerf;
       });
+
+      const quarterProgress = pillarIndicators.length > 0 ? (totalQuarterPerf / pillarIndicators.length) : 0;
+      const annualProgress = totalIndicatorsAcrossAllPillars > 0 ? (totalQuarterPerf / totalIndicatorsAcrossAllPillars) : 0;
 
       return {
         ...pillar,
-        q: totalQuarterPerf / pillarIndicators.length,
-        a: totalAnnualPerf / pillarIndicators.length
+        q: quarterProgress,
+        a: annualProgress
       };
     });
   }, [entriesByIndicator, selectedQuarter]);

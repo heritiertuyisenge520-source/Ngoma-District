@@ -1,5 +1,5 @@
 import express from 'express';
-import { EntryModel, PillarModel } from '../models';
+import { EntryModel, PillarModel, SubmissionModel } from '../models';
 import { calculateEmployeeProgress } from '../utils/progressCalculator';
 
 const router = express.Router();
@@ -115,9 +115,8 @@ router.get('/progress', async (req, res) => {
                 const pillarIndicatorCount = pillarIndicators.length;
 
                 // Get all entries for this pillar
-                const entries = await EntryModel.find({
-                    pillarId: pillar.id,
-                    isDeleted: false
+                const entries = await SubmissionModel.find({
+                    pillarId: pillar.id
                 });
 
                 if (entries.length === 0 || pillarIndicators.length === 0) {

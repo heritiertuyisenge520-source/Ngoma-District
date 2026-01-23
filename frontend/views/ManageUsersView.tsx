@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { API_ENDPOINTS, getUpdateUserUrl, getDeleteUserUrl } from '../config/api';
+import { authFetch } from '../utils/authFetch';
 
 interface User {
     _id: string;
@@ -46,7 +47,7 @@ const ManageUsersView: React.FC<ManageUsersViewProps> = ({ adminEmail }) => {
     const fetchUsers = async () => {
         try {
             setLoading(true);
-            const response = await fetch(API_ENDPOINTS.ALL_USERS);
+            const response = await authFetch(API_ENDPOINTS.ALL_USERS);
             if (response.ok) {
                 const data = await response.json();
                 setUsers(data);
@@ -60,7 +61,7 @@ const ManageUsersView: React.FC<ManageUsersViewProps> = ({ adminEmail }) => {
 
     const fetchUnits = async () => {
         try {
-            const response = await fetch(API_ENDPOINTS.UNITS);
+            const response = await authFetch(API_ENDPOINTS.UNITS);
             if (response.ok) {
                 const data = await response.json();
                 setUnits(data);
@@ -86,9 +87,8 @@ const ManageUsersView: React.FC<ManageUsersViewProps> = ({ adminEmail }) => {
         if (!editingUser) return;
 
         try {
-            const response = await fetch(getUpdateUserUrl(editingUser._id), {
+            const response = await authFetch(getUpdateUserUrl(editingUser._id), {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(editForm)
             });
 
@@ -109,7 +109,7 @@ const ManageUsersView: React.FC<ManageUsersViewProps> = ({ adminEmail }) => {
         }
 
         try {
-            const response = await fetch(getDeleteUserUrl(userId), {
+            const response = await authFetch(getDeleteUserUrl(userId), {
                 method: 'DELETE'
             });
 

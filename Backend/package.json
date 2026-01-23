@@ -9,7 +9,8 @@
     "start:ts": "ts-node src/index.ts",
     "dev": "nodemon src/index.ts",
     "seed": "ts-node src/scripts/seed.ts",
-    "seed:admin": "ts-node src/scripts/seedSuperAdmin.ts"
+    "seed:admin": "ts-node src/scripts/seedSuperAdmin.ts",
+    "build:indicators": "ts-node src/scripts/build-indicators.ts"
   },
   "keywords": [],
   "author": "",

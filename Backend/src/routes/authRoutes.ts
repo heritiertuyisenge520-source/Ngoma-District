@@ -1,5 +1,6 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
+import mongoose from 'mongoose';
 import { UserModel, IndicatorAssignmentModel, DataChangeRequestModel, DataDeleteRequestModel, SubmissionPeriodModel, SubmissionModel, UNITS } from '../models';
 import { generateAuthToken, authenticate, authorize, PERMISSIONS, authorizeUnitAccess, authorizeSubmissionAccess } from '../middleware/auth';
 
@@ -818,6 +819,72 @@ router.delete('/delete-user/:userId', authenticate, authorize(PERMISSIONS.MANAGE
     } catch (error) {
         console.error('Error deleting user:', error);
         res.status(500).json({ message: 'Error deleting user' });
+    }
+});
+
+// ============ INDICATORS ROUTES ============
+
+// Get all indicators from database
+router.get('/indicators', async (req, res) => {
+    try {
+        const db = mongoose.connection.db;
+        if (!db) {
+            return res.status(500).json({ message: 'Database not connected' });
+        }
+
+        const indicators = await db.collection('indicators').find({}).sort({ pillarId: 1, order: 1 }).toArray();
+        res.json(indicators);
+    } catch (error) {
+        console.error('Error fetching indicators:', error);
+        res.status(500).json({ message: 'Error fetching indicators' });
+    }
+});
+
+// Get indicators grouped by pillars
+router.get('/pillars', async (req, res) => {
+    try {
+        const db = mongoose.connection.db;
+        if (!db) {
+            return res.status(500).json({ message: 'Database not connected' });
+        }
+
+        const indicators = await db.collection('indicators').find({}).sort({ pillarId: 1, order: 1 }).toArray();
+        
+        // Group indicators by pillar
+        const pillars = {
+            economic: {
+                id: "economic",
+                name: "Economic Transformation Pillar",
+                outputs: [{
+                    id: "economic-output-1",
+                    name: "Economic Development Indicators",
+                    indicators: indicators.filter((ind: any) => ind.pillarId === 'economic')
+                }]
+            },
+            social: {
+                id: "social", 
+                name: "Social Transformation Pillar",
+                outputs: [{
+                    id: "social-output-1",
+                    name: "Social Development Indicators", 
+                    indicators: indicators.filter((ind: any) => ind.pillarId === 'social')
+                }]
+            },
+            governance: {
+                id: "governance",
+                name: "Transformational Governance Pillar",
+                outputs: [{
+                    id: "governance-output-1",
+                    name: "Governance Indicators",
+                    indicators: indicators.filter((ind: any) => ind.pillarId === 'governance')
+                }]
+            }
+        };
+
+        res.json(Object.values(pillars));
+    } catch (error) {
+        console.error('Error fetching pillars:', error);
+        res.status(500).json({ message: 'Error fetching pillars' });
     }
 });
 

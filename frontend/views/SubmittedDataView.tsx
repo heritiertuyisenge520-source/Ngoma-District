@@ -442,7 +442,7 @@ const SubmittedDataView: React.FC<SubmittedDataViewProps> = (props) => {
                 <th className="px-6 py-5 text-[11px] font-bold text-slate-700 uppercase tracking-widest">Pillar</th>
                 <th className="px-6 py-5 text-[11px] font-bold text-slate-700 uppercase tracking-widest">Indicator</th>
                 <th className="px-6 py-5 text-[11px] font-bold text-slate-700 uppercase tracking-widest">Period</th>
-                <th className="px-6 py-5 text-[11px] font-bold text-slate-700 uppercase tracking-widest text-right">Value / Target</th>
+                <th className="px-6 py-5 text-[11px] font-bold text-slate-700 uppercase tracking-widest text-right">Value</th>
                 <th className="px-6 py-5 text-[11px] font-bold text-slate-700 uppercase tracking-widest">Comments</th>
                 <th className="px-6 py-5 text-[11px] font-bold text-slate-700 uppercase tracking-widest">Supporting Docs</th>
                 <th className="px-6 py-5 text-[11px] font-bold text-slate-700 uppercase tracking-widest">Submitted By</th>
@@ -501,11 +501,6 @@ const SubmittedDataView: React.FC<SubmittedDataViewProps> = (props) => {
                               <span className="text-sm font-black text-blue-700">
                                 {entry.value?.toLocaleString() || '0'}
                               </span>
-                              {entry.targetValue !== undefined && entry.targetValue !== null && (
-                                <div className="text-xs text-slate-500">
-                                  Target: {entry.targetValue.toLocaleString()}
-                                </div>
-                              )}
                             </div>
                           ) : (
                             // Show sub-indicator values if they exist

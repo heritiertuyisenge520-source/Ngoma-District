@@ -26,6 +26,10 @@ export const API_ENDPOINTS = {
     UPDATE_USER: `${API_BASE_URL}/api/auth/update-user`,
     DELETE_USER: `${API_BASE_URL}/api/auth/delete-user`,
 
+    // Indicators endpoints
+    INDICATORS: `${API_BASE_URL}/api/auth/indicators`,
+    PILLARS: `${API_BASE_URL}/api/auth/pillars`,
+
     // Indicator assignment endpoints
     ASSIGN_INDICATOR: `${API_BASE_URL}/api/auth/assign-indicator`,
     ASSIGNED_INDICATORS: `${API_BASE_URL}/api/auth/assigned-indicators`,
