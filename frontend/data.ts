@@ -713,9 +713,9 @@ export const INDICATORS: Indicator[] = [
     "name": "Number of eligible HH beneficiaries for VUP/PW (HBECD)",
     "targets": {
       "q1": 1666,
-      "q2": 1666,
-      "q3": 1666,
-      "q4": 1666,
+      "q2": 0,
+      "q3": 0,
+      "q4": 0,
       "annual": 1666
     }
   },
