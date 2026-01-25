@@ -2392,7 +2392,8 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                                 onChange={(e) => handleSubValueChange('target_pop', e.target.value)}
                                 placeholder="e.g. 10000"
                                 className={`${inputClasses} placeholder:text-slate-300 bg-white`}
-                                min="1"
+                                min="0"
+                                step="any"
                                 required
                               />
                               <p className="text-[9px] text-slate-500">Total target population</p>
@@ -2410,6 +2411,7 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                                 placeholder="e.g. 2000"
                                 className={`${inputClasses} placeholder:text-slate-300 bg-white`}
                                 min="0"
+                                step="any"
                                 required
                               />
                               <p className="text-[9px] text-slate-500">Number achieved so far</p>
@@ -2428,9 +2430,11 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                                   ? 'text-emerald-600'
                                   : 'text-slate-400'
                                   }`}>
-                                  {Number(subValues['target_pop']) > 0 && subValues['achieved_pop'] !== undefined
-                                    ? ((Number(subValues['achieved_pop']) / Number(subValues['target_pop'])) * 100).toFixed(1)
-                                    : '0.0'}%
+                                  {subValues['target_pop'] !== undefined && subValues['achieved_pop'] !== undefined
+                                    ? (Number(subValues['target_pop']) === 0 
+                                        ? '0.0' 
+                                        : Math.min((Number(subValues['achieved_pop']) / Number(subValues['target_pop'])) * (selectedIndicator?.id === '124' ? 1000 : 100), selectedIndicator?.id === '124' ? 1000 : 100).toFixed(1))
+                                    : '0.0'}{selectedIndicator?.id === '124' ? ' per 1000' : '%'}
                                 </span>
                               </div>
                               <p className="text-[9px] text-emerald-600 font-bold">Auto-calculated from inputs</p>
@@ -2439,7 +2443,7 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
 
                           <div className="mt-3 p-3 bg-white/70 rounded-lg border border-blue-100">
                             <p className="text-[10px] text-blue-700 font-semibold">
-                              <span className="font-black">Formula:</span> (Numerator ÷ Denominator) × 100 = Percentage
+                              <span className="font-black">Formula:</span> (Numerator ÷ Denominator) × {selectedIndicator?.id === '124' ? '1000 = Rate per 1000' : '100 = Percentage'}
                             </p>
                             <p className="text-[9px] text-slate-500 mt-1">
                               This calculated percentage will be compared against the fixed target for progress tracking.

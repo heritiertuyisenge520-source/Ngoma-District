@@ -19,7 +19,7 @@ interface ApproveUsersViewProps {
 const UNITS = [
     'Agriculture And Natural Resource Unit',
     'Business Development And Employment Unit',
-    'Infrastructure One Stop Center',
+    'Infrastructure One Stop Cnter',
     'Social Development Unit',
     'Health Unit',
     'Education Unit',
@@ -27,7 +27,8 @@ const UNITS = [
     'Planning, Monitoring and Evaluation Unit',
     'HR and Administration Unit',
     'Finance Unit',
-    'Internal Audit'
+    'Department of audit',
+    'District leaders'
 ];
 
 const ApproveUsersView: React.FC<ApproveUsersViewProps> = ({ adminEmail }) => {
@@ -202,7 +203,7 @@ const ApproveUsersView: React.FC<ApproveUsersViewProps> = ({ adminEmail }) => {
                                             >
                                                 <option value="">-- Select Unit --</option>
                                                 {UNITS.map(unit => (
-                                                    <option key={unit} value={unit}>Director of {unit}</option>
+                                                    <option key={unit} value={unit}>{unit}</option>
                                                 ))}
                                             </select>
                                         </div>
@@ -218,8 +219,20 @@ const ApproveUsersView: React.FC<ApproveUsersViewProps> = ({ adminEmail }) => {
                                                 className={inputClasses}
                                             >
                                                 <option value="">-- Select Role --</option>
-                                                <option value="head">Head of Unit</option>
-                                                <option value="employee">Employee</option>
+                                                {selectedUnit[user._id] === 'District leaders' ? (
+                                                    <>
+                                                        <option value="Mayor">Mayor</option>
+                                                        <option value="Vice Mayor ASOC">Vice Mayor ASOC</option>
+                                                        <option value="Vice Mayor FED">Vice Mayor FED</option>
+                                                        <option value="DES">DES</option>
+                                                        <option value="DM">DM</option>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <option value="head">Head of Unit</option>
+                                                        <option value="employee">Employee</option>
+                                                    </>
+                                                )}
                                             </select>
                                         </div>
 

@@ -30,7 +30,6 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [position, setPosition] = useState('');
-    const [userType, setUserType] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
@@ -170,7 +169,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                 alert("Error connecting to server. Please ensure the backend is running.");
             }
         } else if (viewMode === 'register') {
-            if (!email || !firstName || !lastName || !position || !userType || !password || !confirmPassword) {
+            if (!email || !firstName || !lastName || !position || !password || !confirmPassword) {
                 alert("Please fill all fields to register");
                 setIsLoading(false);
                 return;
@@ -200,7 +199,6 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                         firstName,
                         lastName,
                         role: position,
-                        userType,
                         password
                     }),
                 });
@@ -216,8 +214,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                         setFirstName('');
                         setLastName('');
                         setPosition('');
-                        setUserType('');
-                        setPassword('');
+                                        setPassword('');
                         setConfirmPassword('');
                         setViewMode('login');
                     } else {
@@ -228,7 +225,6 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                             name: responseData.user.name,
                             role: responseData.user.role,
                             isApproved: responseData.user.isApproved,
-                            userType: responseData.user.userType,
                             unit: responseData.user.unit
                         });
                     }
@@ -670,34 +666,6 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                                             </div>
                                         </div>
 
-                                        {/* User Type Selection */}
-                                        <div className="space-y-2">
-                                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
-                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                                </svg>
-                                                User Type
-                                            </label>
-                                            <div className="relative group">
-                                                <select
-                                                    value={userType}
-                                                    onChange={(e) => setUserType(e.target.value)}
-                                                    className="w-full h-14 bg-white/5 border border-white/10 rounded-xl px-5 text-white appearance-none focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all font-medium cursor-pointer hover:border-white/20"
-                                                    required={viewMode === 'register'}
-                                                >
-                                                    <option value="" className="bg-[#1e293b] text-slate-400">-- Select user type --</option>
-                                                    <option value="super_admin" className="bg-[#1e293b] text-white py-2">Super Admin</option>
-                                                    <option value="leader" className="bg-[#1e293b] text-white py-2">Leader</option>
-                                                    <option value="head" className="bg-[#1e293b] text-white py-2">Head of Unit</option>
-                                                    <option value="employee" className="bg-[#1e293b] text-white py-2">Employee</option>
-                                                </select>
-                                                <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                        </div>
                                     </div>
                                 )}
 

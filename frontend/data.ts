@@ -885,16 +885,14 @@ export const INDICATORS: Indicator[] = [
   },
   {
     "id": "67",
-    "name": "Completion of 4 retaining walls (%)",
+    "name": "Number of  vulnerable PwDs supported with assistive devices",
     "targets": {
-      "q1": "80%",
-      "q2": "100%",
-      "q3": "0",
-      "q4": "0",
-      "annual": "100%"
+      "q1": "30",
+      "q2": "50",
+      "q3": "40",
+      "q4": "30",
+      "annual": "150"
     },
-    "isDual": true,
-    "measurementType": "percentage"
   },
   {
     "id": "68",
@@ -1216,8 +1214,8 @@ export const INDICATORS: Indicator[] = [
       "q4": 0,
       "annual": "27%"
     },
-    "measurementType": "decreasing",
-    "baseline": 100
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "91",
@@ -1229,8 +1227,8 @@ export const INDICATORS: Indicator[] = [
       "q4": 0,
       "annual": "4.9%"
     },
-    "measurementType": "decreasing",
-    "baseline": 50
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "92",
@@ -1676,7 +1674,9 @@ export const INDICATORS: Indicator[] = [
       "q3": 0,
       "q4": 20,
       "annual": 20
-    }
+    },
+    "isDual": true,
+    "measurementType": "percentage"
   },
   {
     "id": "125",

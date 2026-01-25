@@ -36,7 +36,7 @@ export interface IMonitoringEntry extends Document {
 export const UNITS = [
     'Agriculture And Natural Resource Unit',
     'Business Development And Employment Unit',
-    'Infrastructure One Stop Center',
+    'Infrastructure One Stop Cnter',
     'Social Development Unit',
     'Health Unit',
     'Education Unit',
@@ -44,8 +44,8 @@ export const UNITS = [
     'Planning, Monitoring and Evaluation Unit',
     'HR and Administration Unit',
     'Finance Unit',
-    'Internal Audit',
-    'Audit Unit'
+    'Department of audit',
+    'District leaders'
 ] as const;
 
 export type UnitType = typeof UNITS[number];

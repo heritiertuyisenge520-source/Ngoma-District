@@ -12,7 +12,7 @@ const SUPER_ADMIN_EMAIL = 'baptise.nduwayezu@ngoma.gov.rw';
 // Register a new user (requires admin approval)
 router.post('/register', async (req, res) => {
     try {
-        const { email, password, name, role, firstName, lastName } = req.body;
+        const { email, password, name, role, firstName, lastName, unit } = req.body;
 
         // Check if user already exists
         const existingUser = await UserModel.findOne({ email });
@@ -23,8 +23,26 @@ router.post('/register', async (req, res) => {
         // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Create new user - NOT approved by default (except super admin)
+        // Determine user type and approval status based on role and unit
         const isSuperAdmin = email === SUPER_ADMIN_EMAIL;
+        const isAuditUnit = unit === 'Department of audit';
+        const isLeadersUnit = unit === 'District leaders';
+
+        let userType = 'employee';
+        let isApproved = false;
+
+        if (isSuperAdmin) {
+            userType = 'super_admin';
+            isApproved = true;
+        } else if (isAuditUnit) {
+            userType = 'employee';
+            // Audit department users are auto-approved
+            isApproved = true;
+        } else if (isLeadersUnit) {
+            userType = 'leader';
+            // District leaders are auto-approved
+            isApproved = true;
+        }
 
         const user = new UserModel({
             email,
@@ -33,15 +51,16 @@ router.post('/register', async (req, res) => {
             firstName,
             lastName,
             role: role || 'viewer',
-            isApproved: isSuperAdmin, // Super admin is auto-approved
-            userType: isSuperAdmin ? 'super_admin' : 'employee',
+            unit: unit || null,
+            isApproved,
+            userType,
             isActive: true
         });
 
         await user.save();
 
-        // If super admin, return with token
-        if (isSuperAdmin) {
+        // If auto-approved (super admin, audit, or leaders), return with token
+        if (isApproved) {
             const token = generateAuthToken(user._id.toString());
             return res.status(201).json({
                 user: {
@@ -50,7 +69,8 @@ router.post('/register', async (req, res) => {
                     name: user.name,
                     role: user.role,
                     isApproved: true,
-                    userType: 'super_admin'
+                    userType,
+                    unit: user.unit
                 },
                 token
             });
@@ -65,7 +85,8 @@ router.post('/register', async (req, res) => {
                 email: user.email,
                 name: user.name,
                 role: user.role,
-                isApproved: false
+                isApproved: false,
+                userType
             }
         });
     } catch (error) {
