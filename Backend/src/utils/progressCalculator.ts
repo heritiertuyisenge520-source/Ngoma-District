@@ -1,4 +1,5 @@
 import { SubmissionModel } from '../models';
+import { INDICATORS } from '../data/indicators';
 
 interface QuarterlyProgress {
   q1: { actual: number; target: number; percentage: number };
@@ -29,8 +30,7 @@ export const calculateIndicatorProgress = async (
   indicatorId: string,
   indicatorName: string,
   pillarName: string,
-  userEmail: string,
-  indicatorTargets?: any
+  userEmail: string
 ): Promise<IndicatorProgress> => {
   try {
     // Get all submissions for this indicator by the user
@@ -63,18 +63,19 @@ export const calculateIndicatorProgress = async (
       }
     });
 
-    // Set targets (you can modify this to get from indicator data)
-    if (indicatorTargets) {
-      quarterlyProgress.q1.target = indicatorTargets.q1 || 0;
-      quarterlyProgress.q2.target = indicatorTargets.q2 || 0;
-      quarterlyProgress.q3.target = indicatorTargets.q3 || 0;
-      quarterlyProgress.q4.target = indicatorTargets.q4 || 0;
+    // Set targets from indicators data
+    const indicatorData = INDICATORS.find(ind => ind.id === indicatorId);
+    if (indicatorData && indicatorData.targets) {
+      quarterlyProgress.q1.target = Number(indicatorData.targets.q1) || 0;
+      quarterlyProgress.q2.target = Number(indicatorData.targets.q2) || 0;
+      quarterlyProgress.q3.target = Number(indicatorData.targets.q3) || 0;
+      quarterlyProgress.q4.target = Number(indicatorData.targets.q4) || 0;
     } else {
-      // Default targets - you may want to get these from your indicators data
-      quarterlyProgress.q1.target = 25;
-      quarterlyProgress.q2.target = 25;
-      quarterlyProgress.q3.target = 25;
-      quarterlyProgress.q4.target = 25;
+      // Default targets if indicator not found
+      quarterlyProgress.q1.target = 0;
+      quarterlyProgress.q2.target = 0;
+      quarterlyProgress.q3.target = 0;
+      quarterlyProgress.q4.target = 0;
     }
 
     // Calculate quarterly percentages
@@ -150,8 +151,7 @@ export const calculateEmployeeProgress = async (userEmail: string): Promise<Indi
         indicator.indicatorId,
         indicator.indicatorName,
         indicator.pillarName,
-        userEmail,
-        indicator.targets
+        userEmail
       );
     });
 

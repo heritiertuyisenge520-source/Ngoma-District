@@ -26,6 +26,12 @@ const MonitorSubmitView: React.FC<MonitorSubmitViewProps> = ({ user }) => {
     const [editingPeriod, setEditingPeriod] = useState<SubmissionPeriod | null>(null);
     const [successMessage, setSuccessMessage] = useState('');
 
+    const [systemStatus, setSystemStatus] = useState({
+        isOpen: false,
+        activePeriod: null as SubmissionPeriod | null,
+        loading: true
+    });
+
     const [formData, setFormData] = useState({
         description: '',
         startDate: '',
@@ -34,6 +40,7 @@ const MonitorSubmitView: React.FC<MonitorSubmitViewProps> = ({ user }) => {
 
     useEffect(() => {
         fetchPeriods();
+        checkSystemStatus();
     }, []);
 
     const fetchPeriods = async () => {
@@ -43,11 +50,52 @@ const MonitorSubmitView: React.FC<MonitorSubmitViewProps> = ({ user }) => {
             if (response.ok) {
                 const data = await response.json();
                 setPeriods(data);
+                checkSystemStatus(data);
             }
         } catch (error) {
             console.error('Error fetching submission periods:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const checkSystemStatus = (periodsData?: SubmissionPeriod[]) => {
+        const data = periodsData || periods;
+        const now = new Date();
+        const activePeriod = data.find(p => 
+            p.isActive && 
+            new Date(p.startDate) <= now && 
+            new Date(p.endDate) >= now
+        );
+
+        setSystemStatus({
+            isOpen: !!activePeriod,
+            activePeriod: activePeriod,
+            loading: false
+        });
+    };
+
+    const toggleSystemStatus = async () => {
+        if (systemStatus.isOpen && systemStatus.activePeriod) {
+            // Close system - deactivate current period
+            try {
+                const response = await authPost(getSubmissionPeriodUrl(systemStatus.activePeriod._id), {
+                    ...systemStatus.activePeriod,
+                    isActive: false
+                });
+
+                if (response.ok) {
+                    setSuccessMessage('System closed successfully! Users can no longer submit data.');
+                    fetchPeriods();
+                    setTimeout(() => setSuccessMessage(''), 5000);
+                }
+            } catch (error) {
+                console.error('Error closing system:', error);
+                alert('Failed to close system. Please try again.');
+            }
+        } else {
+            // Open system - show form to create new period
+            setShowForm(true);
         }
     };
 
@@ -71,12 +119,13 @@ const MonitorSubmitView: React.FC<MonitorSubmitViewProps> = ({ user }) => {
 
             const response = await authPost(url, {
                 ...formData,
+                isActive: true, // New periods are active by default
                 createdBy: user.email,
                 createdByName: user.name
             });
 
             if (response.ok) {
-                setSuccessMessage(editingPeriod ? 'Submission period updated successfully!' : 'Submission period created successfully!');
+                setSuccessMessage(editingPeriod ? 'Submission period updated successfully!' : 'System opened successfully! Users can now submit data.');
                 fetchPeriods();
                 resetForm();
                 setTimeout(() => setSuccessMessage(''), 5000);
@@ -150,27 +199,16 @@ const MonitorSubmitView: React.FC<MonitorSubmitViewProps> = ({ user }) => {
         };
     };
 
-    const activePeriod = periods.find(p => p.isActive && new Date(p.startDate) <= new Date() && new Date(p.endDate) >= new Date());
-
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900">Monitor Submissions</h1>
+                    <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900">Submission Control Center</h1>
                     <p className="mt-1 text-sm text-slate-600 font-medium">
-                        Control when users can submit their progress data. Set start and end dates for submission windows.
+                        Manage system access and control when users can submit their progress data.
                     </p>
                 </div>
-                <button
-                    onClick={() => setShowForm(true)}
-                    className="px-6 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors flex items-center space-x-2 shadow-lg shadow-blue-600/20"
-                >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                    <span>Create New Period</span>
-                </button>
             </header>
 
             {/* Success Message */}
@@ -194,32 +232,114 @@ const MonitorSubmitView: React.FC<MonitorSubmitViewProps> = ({ user }) => {
                 </div>
             )}
 
-            {/* Current Active Period Banner */}
-            {activePeriod && (
-                <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
-                    <div className="relative z-10">
-                        <div className="flex items-center space-x-2 mb-2">
-                            <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
-                            <span className="text-emerald-100 text-sm font-semibold uppercase tracking-wider">Currently Active</span>
+            {/* SYSTEM STATUS CARD - THE MAIN FEATURE */}
+            <div className={`relative rounded-2xl p-8 shadow-xl overflow-hidden transition-all duration-500 ${
+                systemStatus.isOpen 
+                    ? 'bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-600' 
+                    : 'bg-gradient-to-br from-red-600 via-red-500 to-rose-600'
+            }`}>
+                {/* Background decoration */}
+                <div className={`absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl opacity-20 ${
+                    systemStatus.isOpen ? 'bg-white' : 'bg-black'
+                }`}></div>
+                <div className={`absolute bottom-0 left-0 w-48 h-48 rounded-full blur-2xl opacity-15 ${
+                    systemStatus.isOpen ? 'bg-white' : 'bg-black'
+                }`}></div>
+
+                <div className="relative z-10">
+                    {/* Status Badge */}
+                    <div className="flex items-center space-x-3 mb-6">
+                        <div className={`w-4 h-4 rounded-full ${
+                            systemStatus.isOpen ? 'bg-white animate-pulse' : 'bg-red-200'
+                        }`}></div>
+                        <span className="text-white/90 text-sm font-bold uppercase tracking-wider">
+                            System Status
+                        </span>
+                    </div>
+
+                    {/* Main Status */}
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h2 className="text-3xl md:text-4xl font-bold text-white mb-2">
+                                {systemStatus.isOpen ? 'System Open' : 'System Closed'}
+                            </h2>
+                            <p className="text-white/80 text-lg max-w-2xl">
+                                {systemStatus.isOpen 
+                                    ? 'Users and heads of units can currently submit their progress data through the system.'
+                                    : 'Submissions are currently disabled. Users cannot submit any progress data at this time.'
+                                }
+                            </p>
+
+                            {/* Active Period Info */}
+                            {systemStatus.activePeriod && (
+                                <div className="mt-4 bg-white/20 backdrop-blur-sm rounded-xl p-4 inline-block">
+                                    <p className="text-white font-semibold">
+                                        {systemStatus.activePeriod.description}
+                                    </p>
+                                    <p className="text-white/80 text-sm">
+                                        {new Date(systemStatus.activePeriod.startDate).toLocaleDateString()} - {new Date(systemStatus.activePeriod.endDate).toLocaleDateString()}
+                                    </p>
+                                    <p className="text-white/70 text-xs mt-1">
+                                        {getStatusInfo(systemStatus.activePeriod).message}
+                                    </p>
+                                </div>
+                            )}
                         </div>
-                        <h3 className="text-xl font-bold mb-1">{activePeriod.description}</h3>
-                        <p className="text-emerald-100">
-                            {new Date(activePeriod.startDate).toLocaleDateString()} - {new Date(activePeriod.endDate).toLocaleDateString()}
-                        </p>
-                        <div className="mt-4 bg-white/20 rounded-xl px-4 py-2 inline-block">
-                            <span className="font-bold">{getStatusInfo(activePeriod).message}</span>
+
+                        {/* Status Icon */}
+                        <div className="hidden md:block">
+                            {systemStatus.isOpen ? (
+                                <div className="w-24 h-24 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+                                    <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                                    </svg>
+                                </div>
+                            ) : (
+                                <div className="w-24 h-24 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+                                    <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                    </svg>
+                                </div>
+                            )}
                         </div>
                     </div>
+
+                    {/* Action Button */}
+                    <div className="mt-6">
+                        <button
+                            onClick={toggleSystemStatus}
+                            className={`px-6 py-3 font-bold rounded-xl transition-all duration-300 flex items-center space-x-2 shadow-lg ${
+                                systemStatus.isOpen
+                                    ? 'bg-white text-red-600 hover:bg-red-50 shadow-white/20'
+                                    : 'bg-white text-emerald-600 hover:bg-emerald-50 shadow-white/20'
+                            }`}
+                        >
+                            {systemStatus.isOpen ? (
+                                <>
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                    </svg>
+                                    <span>Close System</span>
+                                </>
+                            ) : (
+                                <>
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                                    </svg>
+                                    <span>Open System</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
                 </div>
-            )}
+            </div>
 
             {/* Create/Edit Form Modal */}
             {showForm && (
                 <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/40" onClick={() => resetForm()}>
                     <div className="bg-white rounded-2xl p-8 shadow-2xl max-w-lg w-full mx-4 animate-in zoom-in duration-300" onClick={e => e.stopPropagation()}>
                         <h2 className="text-xl font-bold text-slate-900 mb-6">
-                            {editingPeriod ? 'Edit Submission Period' : 'Create New Submission Period'}
+                            {editingPeriod ? 'Edit Submission Period' : 'Open System - Create Submission Period'}
                         </h2>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
@@ -255,9 +375,9 @@ const MonitorSubmitView: React.FC<MonitorSubmitViewProps> = ({ user }) => {
                                     />
                                 </div>
                             </div>
-                            <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
-                                <p className="text-sm text-amber-700">
-                                    <strong>Note:</strong> Creating a new submission period will deactivate all previous periods. Users will only be able to submit data during active submission windows.
+                            <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
+                                <p className="text-sm text-emerald-700">
+                                    <strong>Opening System:</strong> This will activate the submission period and allow all users to submit their progress data. The system will automatically close when the end date is reached.
                                 </p>
                             </div>
                             <div className="flex space-x-3 pt-4">
@@ -270,9 +390,9 @@ const MonitorSubmitView: React.FC<MonitorSubmitViewProps> = ({ user }) => {
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-1 px-4 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
+                                    className="flex-1 px-4 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-colors"
                                 >
-                                    {editingPeriod ? 'Update Period' : 'Create Period'}
+                                    {editingPeriod ? 'Update Period' : 'Open System'}
                                 </button>
                             </div>
                         </form>
@@ -294,7 +414,7 @@ const MonitorSubmitView: React.FC<MonitorSubmitViewProps> = ({ user }) => {
                         </svg>
                     </div>
                     <h3 className="font-bold text-slate-900">No Submission Periods</h3>
-                    <p className="text-slate-500 text-sm mt-1">Create your first submission period to control when users can submit data.</p>
+                    <p className="text-slate-500 text-sm mt-1">Click "Open System" to create your first submission period and allow users to submit data.</p>
                 </div>
             ) : (
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">

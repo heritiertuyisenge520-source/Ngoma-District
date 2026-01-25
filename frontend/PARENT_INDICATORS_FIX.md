@@ -117,3 +117,26 @@ All parent indicators that have sub-indicators have been corrected. Parent indic
 ## Data Integrity ✅
 
 All target values have been preserved and correctly assigned to sub-indicators. No data was lost in the restructuring.
+
+
+
+
+
+
+MONGO_URI=mongodb+srv://heritiertuyisenge520_db_user:Heritier123@cluster0.uqz3vnh.mongodb.net/Ngoma_District?retryWrites=true&w=majority
+JWT_SECRET=Heritier123
+NODE_ENV=production
+CLOUDINARY_CLOUD_NAME=demo
+CLOUDINARY_API_KEY=876847623278566
+CLOUDINARY_API_SECRET=a676b6f65b6f765f6f676f765f676f676f676fd3
+# Cloudinary Configuration
+#CLOUDINARY_CLOUD_NAME=dmattwfzd
+#CLOUDINARY_API_KEY=273854746282525
+#CLOUDINARY_API_SECRET=TU0T7mnPLaNkG0mhKbaPeaXAA
+#FRONTEND_URL=https://imihigo-tracking-tool-g98x.vercel.app/
+
+#https://full-system-three.vercel.app/
+FRONTEND_URL=http://localhost:3000/
+#MONGO_URI=mongodb://127.0.0.1:27017/Imihigo_system
+
+# Cloudinary Configuration for Document Uploads

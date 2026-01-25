@@ -439,13 +439,27 @@ router.post('/approve-change-request/:requestId', async (req, res) => {
         // Update the actual submission
         const submission = await SubmissionModel.findById(request.submissionId);
         if (submission) {
+            // Store original values before updating
+            submission.originalValue = submission.value;
+            submission.originalSubValues = submission.subValues;
+            submission.originalComments = submission.comments;
+            
+            // Update with new values
             submission.value = request.newValue;
             if (request.newSubValues) {
-                (submission as any).subValues = request.newSubValues;
+                submission.subValues = request.newSubValues;
             }
             if (request.newComments) {
-                (submission as any).comments = request.newComments;
+                submission.comments = request.newComments;
             }
+            
+            // Update modification tracking fields
+            submission.hasBeenModified = true;
+            submission.modifiedAt = new Date();
+            submission.modifiedBy = request.requestedBy;
+            submission.modificationStatus = 'approved_modified';
+            submission.changeRequestId = request._id.toString();
+            
             await submission.save();
         }
 
@@ -476,6 +490,14 @@ router.post('/reject-change-request/:requestId', async (req, res) => {
         const request = await DataChangeRequestModel.findById(requestId);
         if (!request) {
             return res.status(404).json({ message: 'Change request not found' });
+        }
+
+        // Reset submission status back to original
+        const submission = await SubmissionModel.findById(request.submissionId);
+        if (submission) {
+            submission.modificationStatus = 'original';
+            submission.changeRequestId = undefined;
+            await submission.save();
         }
 
         request.status = 'rejected';

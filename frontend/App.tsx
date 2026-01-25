@@ -35,7 +35,7 @@ interface UserInfo {
   email: string;
   name: string;
   role: string;
-  userType?: 'super_admin' | 'head' | 'employee';
+  userType?: 'super_admin' | 'leader' | 'head' | 'employee';
   unit?: string;
 }
 
@@ -66,13 +66,13 @@ const App: React.FC = () => {
       // Use dashboard endpoint for main analytics view
       const endpoint = activeView === 'analytics' ? API_ENDPOINTS.DASHBOARD : API_ENDPOINTS.SUBMISSIONS;
       const response = await authGet(endpoint);
-      
+
       if (!response.ok) {
         console.error('API response not ok:', response.status, response.statusText);
         setEntries([]);
         return;
       }
-      
+
       const data = await response.json();
       setEntries(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -324,11 +324,11 @@ const App: React.FC = () => {
   };
 
   if (!user) return <LoginView onLogin={handleLogin} />;
-<task_progress>
-- [x] Fix unterminated template literal error
-- [x] Update all syntax to avoid template literals
-- [ ] Test the changes
-</task_progress>
+  <task_progress>
+    - [x] Fix unterminated template literal error
+    - [x] Update all syntax to avoid template literals
+    - [ ] Test the changes
+  </task_progress>
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-slate-100">
@@ -342,11 +342,8 @@ const App: React.FC = () => {
         onClose={() => setIsSidebarOpen(false)}
       />
 
-      {/* FIX 1: added w-full here to ensure the container stretches.
-        FIX 2: md:pl-64 pushes content right to accommodate sidebar.
-        FIX 3: overflow-hidden prevents content from scrolling under sidebar.
-      */}
-      <div className="flex-1 flex flex-col min-w-0 md:pl-64 w-full transition-all duration-300 overflow-hidden">
+      {/* Main content container - flex-1 makes it take remaining space on desktop */}
+      <div className="flex flex-col flex-1 min-w-0 transition-all duration-300 h-screen">
 
         <header className="h-16 w-full bg-white border-b border-slate-200 flex-shrink-0">
           <Navbar user={user} onMenuClick={() => setIsSidebarOpen(true)} />
@@ -356,7 +353,7 @@ const App: React.FC = () => {
           The 'max-w-7xl' was causing your content to stop at 1280px, 
           leaving big empty spaces on the right of large monitors.
         */}
-        <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-8 w-full">
+        <main className="flex-1 min-w-0 overflow-y-auto p-4 md:p-6">
           <div className="w-full h-full">
             {activeView === 'analytics' && <AnalyticsView entries={entries} userType={user.userType} />}
             {activeView === 'fill' && (

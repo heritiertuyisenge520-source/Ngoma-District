@@ -7,7 +7,7 @@ export interface AuthenticatedRequest extends Request {
         id: string;
         email: string;
         role: string;
-        userType?: 'super_admin' | 'head' | 'employee';
+        userType?: 'super_admin' | 'leader' | 'head' | 'employee';
         unit?: string;
     };
 }

@@ -1,7 +1,8 @@
-import express from 'express';
+
+import dotenv from 'dotenv';
+dotenv.config();import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import dotenv from 'dotenv';
 import connectDB from './db';
 import { ensureAdminExists } from './utils/adminInit';
 import authRoutes from './routes/authRoutes';
@@ -11,7 +12,39 @@ import dataRoutes from './routes/dataRoutes';
 import uploadRoutes from './routes/uploadRoutes';
 
 // Load environment variables
-dotenv.config();
+console.log('=== DOTENV DEBUG ===');
+console.log('Current working directory:', process.cwd());
+console.log('NODE_ENV:', process.env.NODE_ENV);
+
+// Try multiple dotenv approaches
+const result1 = dotenv.config();
+console.log('Dotenv config result (default):', result1);
+
+if (result1.error) {
+    console.error('Dotenv error (default):', result1.error);
+    // Try with explicit path
+    const result2 = dotenv.config({ path: '.env' });
+    console.log('Dotenv config result (explicit path):', result2);
+    if (result2.error) {
+        console.error('Dotenv error (explicit path):', result2.error);
+    }
+}
+
+console.log('After dotenv - CLOUDINARY_CLOUD_NAME:', process.env.CLOUDINARY_CLOUD_NAME);
+console.log('=== END DOTENV DEBUG ===');
+
+// Add global error handlers
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    console.error('Reason details:', reason instanceof Error ? reason.stack : String(reason));
+});
+
+process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error);
+    console.error('Error details:', error.message);
+    console.error('Stack trace:', error.stack);
+    process.exit(1);
+});
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -86,6 +119,8 @@ const startServer = async () => {
         });
     } catch (error) {
         console.error('Failed to start server:', error);
+        console.error('Error details:', error instanceof Error ? error.message : String(error));
+        console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
         process.exit(1);
     }
 };

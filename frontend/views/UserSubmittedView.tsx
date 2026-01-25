@@ -313,6 +313,12 @@ const UserSubmittedView: React.FC<UserSubmittedViewProps> = ({ user }) => {
                               <span className="text-xs text-slate-500">
                                 {entry.month}
                               </span>
+                              {/* Submitted By - Always show for admins */}
+                              {(user.userType === 'super_admin' || user.userType === 'head') && (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                                  {entry.submittedBy || 'Unknown'}
+                                </span>
+                              )}
                             </div>
                             
                             <h4 className="text-base font-semibold text-slate-900 mb-3 leading-tight">
@@ -362,6 +368,15 @@ const UserSubmittedView: React.FC<UserSubmittedViewProps> = ({ user }) => {
                               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
                                 <p className="text-xs text-amber-800">
                                   <span className="font-semibold">Note:</span> {entry.comments}
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Submitted By - Show for admins or if different from current user */}
+                            {(user.userType === 'super_admin' || user.userType === 'head' || entry.submittedBy !== user.email) && (
+                              <div className="bg-slate-50 border border-slate-200 rounded-lg p-2 mt-2">
+                                <p className="text-xs text-slate-600">
+                                  <span className="font-semibold">Submitted by:</span> {entry.submittedBy || 'Unknown'}
                                 </p>
                               </div>
                             )}

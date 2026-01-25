@@ -1,5 +1,6 @@
 import express from 'express';
-import { SubmissionModel, EntryModel } from '../models';
+import mongoose from 'mongoose';
+import { SubmissionModel, EntryModel, DataChangeRequestModel } from '../models';
 import { authenticate, authorize, PERMISSIONS, authorizeUnitAccess, authorizeSubmissionAccess, AuthenticatedRequest } from '../middleware/auth';
 import { generateSubmissionIdQR } from '../utils/qrGenerator';
 import jsPDF from 'jspdf';
@@ -43,7 +44,8 @@ router.get('/dashboard', authenticate, async (req: AuthenticatedRequest, res) =>
             // For employees, hide or anonymize submitter info
             submittedBy: req.user?.userType === 'employee' ? 'Employee' : sub.submittedBy,
             pillarName: sub.pillarName,
-            indicatorName: sub.indicatorName
+            indicatorName: sub.indicatorName,
+            supportingDocuments: sub.supportingDocuments
         }));
 
         res.json(entries);
@@ -88,7 +90,8 @@ router.get('/', authenticate, authorizeSubmissionAccess, async (req: Authenticat
             timestamp: sub.timestamp,
             submittedBy: sub.submittedBy,
             pillarName: sub.pillarName,
-            indicatorName: sub.indicatorName
+            indicatorName: sub.indicatorName,
+            supportingDocuments: sub.supportingDocuments
         }));
 
         res.json(entries);
@@ -111,34 +114,123 @@ router.get('/:id', authenticate, async (req: AuthenticatedRequest, res) => {
     }
 });
 
+// Check for duplicate submission
+router.post('/check-duplicate', authenticate, async (req: AuthenticatedRequest, res) => {
+    try {
+        const { pillarId, indicatorId, quarterId, month } = req.body;
+        
+        const existingSubmission = await SubmissionModel.findOne({
+            pillarId,
+            indicatorId,
+            quarterId,
+            month,
+            modificationStatus: { $ne: 'pending_approval' } // Don't count pending approvals as duplicates
+        }).lean();
+
+        if (existingSubmission) {
+            return res.json({
+                hasDuplicate: true,
+                existingSubmission: {
+                    _id: existingSubmission._id,
+                    pillarName: existingSubmission.pillarName,
+                    indicatorName: existingSubmission.indicatorName,
+                    value: existingSubmission.value,
+                    subValues: existingSubmission.subValues,
+                    comments: existingSubmission.comments,
+                    timestamp: existingSubmission.timestamp,
+                    submittedBy: existingSubmission.submittedBy,
+                    modificationStatus: existingSubmission.modificationStatus,
+                    hasBeenModified: existingSubmission.hasBeenModified
+                }
+            });
+        }
+
+        res.json({ hasDuplicate: false });
+    } catch (error: any) {
+        console.error('Error checking duplicate submission:', error);
+        res.status(500).json({ message: 'Error checking duplicate submission', error: error.message });
+    }
+});
+
 // Create a new submission
 router.post('/', authenticate, authorize(PERMISSIONS.SUBMIT_DATA), async (req: AuthenticatedRequest, res) => {
     try {
         const submissionData = req.body;
+        const { action, existingSubmissionId } = req.body; // 'edit' or 'increment'
 
-        // DEBUG: Log incoming submission data
-        console.log('INCOMING SUBMISSION DATA:', {
-            indicatorId: submissionData.indicatorId,
-            indicatorName: submissionData.indicatorName,
-            value: submissionData.value,
-            hasSubValues: submissionData.subValues && Object.keys(submissionData.subValues).length > 0,
-            subValues: submissionData.subValues,
-            submittedBy: submissionData.submittedBy
-        });
+        // Handle edit workflow - directly update existing submission
+        if (action === 'edit' && existingSubmissionId) {
+            const existingSubmission = await SubmissionModel.findById(existingSubmissionId);
+            if (!existingSubmission) {
+                return res.status(404).json({ message: 'Existing submission not found' });
+            }
 
-        const submission = new SubmissionModel(submissionData);
-        await submission.save();
+            // Directly update the existing submission
+            await SubmissionModel.findByIdAndUpdate(existingSubmissionId, {
+                value: submissionData.value,
+                targetValue: submissionData.targetValue,
+                comments: submissionData.comments,
+                subValues: submissionData.subValues,
+                submittedBy: req.user?.email,
+                timestamp: new Date(),
+                modificationStatus: 'original',
+                hasBeenModified: false,
+                changeRequestId: undefined
+            });
 
-        // DEBUG: Log saved submission
-        console.log('SAVED SUBMISSION:', {
-            _id: submission._id,
-            indicatorId: submission.indicatorId,
-            value: submission.value,
-            hasSubValues: submission.subValues && Object.keys(submission.subValues).length > 0,
-            subValues: submission.subValues
-        });
+            return res.status(200).json({
+                message: 'Submission updated successfully',
+                submission: await SubmissionModel.findById(existingSubmissionId),
+                requiresApproval: false
+            });
+        }
 
-        res.status(201).json(submission);
+        // Handle increment workflow - replace existing submission with new data
+        if (action === 'increment' || !action) {
+            // Find and replace the existing submission
+            const existingSubmission = await SubmissionModel.findOne({
+                pillarId: submissionData.pillarId,
+                indicatorId: submissionData.indicatorId,
+                quarterId: submissionData.quarterId,
+                month: submissionData.month
+            });
+
+            if (existingSubmission) {
+                // Update the existing submission with new values
+                await SubmissionModel.findByIdAndUpdate(existingSubmission._id, {
+                    value: submissionData.value,
+                    targetValue: submissionData.targetValue,
+                    comments: submissionData.comments,
+                    subValues: submissionData.subValues,
+                    submittedBy: req.user?.email,
+                    timestamp: new Date(),
+                    modificationStatus: 'original',
+                    hasBeenModified: false,
+                    changeRequestId: undefined
+                });
+
+                return res.status(200).json({
+                    message: 'Submission updated successfully',
+                    submission: await SubmissionModel.findById(existingSubmission._id),
+                    requiresApproval: false
+                });
+            } else {
+                // Create new submission if none exists
+                submissionData.submittedBy = req.user?.email;
+                submissionData.modificationStatus = 'original';
+                
+                const submission = new SubmissionModel(submissionData);
+                await submission.save();
+
+                return res.status(201).json({
+                    message: 'New submission created successfully',
+                    submission,
+                    requiresApproval: false
+                });
+            }
+        }
+
+        res.status(400).json({ message: 'Invalid action specified' });
     } catch (error: any) {
         console.error('Error creating submission:', error);
         res.status(400).json({ message: 'Error creating submission', error: error.message });

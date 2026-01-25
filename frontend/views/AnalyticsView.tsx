@@ -130,18 +130,19 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
   const selectedIndicator = useMemo(() => availableIndicators.find(i => i.id === selectedIndicatorId), [availableIndicators, selectedIndicatorId]);
 
   const getPerformanceColor = (percentage: number) => {
-    if (percentage < 50) return 'rose';
+    if (percentage < 50) return 'red';
     if (percentage <= 75) return 'amber';
     return 'emerald';
   };
 
   const getHexForColor = (color: string) => {
     switch (color) {
+      case 'red': return '#ef4444';
       case 'rose': return '#e11d48';
       case 'amber': return '#f59e0b';
       case 'emerald': return '#10b981';
-      default: return '#3b82f6';
     }
+    return '#6366f1';
   };
 
   const getMonthlyValue = (monthName: string) => {
@@ -195,8 +196,26 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
 
   const annualCompletion = useMemo(() => {
     if (!selectedIndicator) return 0;
-    return calculateAnnualProgress(selectedIndicator, entriesByIndicator[selectedIndicator.id] || []);
-  }, [selectedIndicator, entriesByIndicator]);
+    
+    // Get entries for the selected quarter only (not cumulative)
+    const allIndicatorEntries = entriesByIndicator[selectedIndicator.id] || [];
+    const quarterEntries = allIndicatorEntries.filter(entry => 
+      entry.quarterId === selectedQuarterId
+    );
+    
+    // For annual progress, use the current quarter's actual value divided by annual target
+    // This matches the requirement: Q1 actual / annual target, Q2 actual / annual target, etc.
+    const currentQuarterActual = quarterEntries.length > 0 
+      ? Math.max(...quarterEntries.map(e => e.value)) // Use latest value in the quarter
+      : 0;
+    
+    const annualTarget = selectedIndicator.targets.annual;
+    
+    if (annualTarget === 0) return 0;
+    
+    const performance = (currentQuarterActual / Number(annualTarget)) * 100;
+    return Math.min(performance, 100);
+  }, [selectedIndicator, entriesByIndicator, selectedQuarterId]);
 
   const qColor = quarterStats ? getPerformanceColor(quarterStats.performance) : 'blue';
 
@@ -493,7 +512,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
   const inputClasses = "w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-medium shadow-sm hover:border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 outline-none appearance-none cursor-pointer";
 
   return (
-    <div ref={reportRef} className="space-y-8">
+    <div ref={reportRef} className="space-y-8 w-full">
       {/* Part 1: Pillar Progress Overview (Pie Charts) */}
       <div className="bg-white rounded-3xl shadow-lg border border-slate-100 overflow-hidden">
         <div className="p-8 border-b border-slate-100 bg-slate-50">
@@ -676,40 +695,105 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
                 </div>
               </div>
 
-              {/* Bar Chart - INCREASED HEIGHT */}
-              <div className="flex items-end justify-around gap-4 h-80">
-                {quarterStats.months.map((month, idx) => {
-                  const val = quarterStats.monthlyValues[idx];
-                  const maxVal = Math.max(...quarterStats.monthlyValues, 1);
-                  const heightPercent = Math.max((val / maxVal) * 100, 10);
-                  const expected = quarterStats.target / 3;
-                  const mPerf = (val / expected) * 100;
-                  const mColor = getPerformanceColor(mPerf);
 
-                  return (
-                    <div key={month} className="flex-1 flex flex-col items-center group cursor-pointer">
-                      <div className="text-sm font-bold text-white mb-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {val.toLocaleString()}
-                      </div>
-                      <div className="w-full flex items-end h-64">
-                        <div
-                          className="w-full rounded-t-xl transition-all duration-300 group-hover:scale-105"
-                          style={{
-                            height: `${heightPercent}%`,
-                            background: `linear-gradient(180deg, ${getHexForColor(mColor)} 0%, ${getHexForColor(mColor)}80 100%)`,
-                            boxShadow: `0 0 20px ${getHexForColor(mColor)}40`
-                          }}
-                        />
-                      </div>
-                      <span className={`text-xs font-semibold mt-3 uppercase tracking-wide transition-colors ${hoveredMonth === month ? 'text-white' : 'text-slate-400'}`}
-                        onMouseEnter={() => setHoveredMonth(month)}
-                        onMouseLeave={() => setHoveredMonth(null)}>
-                        {month.substring(0, 3)}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
+              {/* Bar Chart - INCREASED HEIGHT */}
+              {(() => {
+                const getSubIndicatorMonthlyValues = (monthName: string) => {
+                  if (!selectedIndicator?.subIndicatorIds) return [];
+                  
+                  const indicatorEntries = entriesByIndicator[selectedIndicatorId] || [];
+                  const monthEntries = indicatorEntries.filter(e => e.month === monthName);
+                  
+                  return Object.entries(selectedIndicator.subIndicatorIds).map(([key, subId]) => {
+                    const subIndicator = INDICATORS.find(ind => ind.id === subId);
+                    const subMonthlyValue = monthEntries.reduce((acc, curr) => {
+                      return acc + (curr.subValues?.[key] || 0);
+                    }, 0);
+                    
+                    return {
+                      id: subId,
+                      name: subIndicator?.name || key,
+                      value: subMonthlyValue,
+                      color: ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'][Object.keys(selectedIndicator.subIndicatorIds).indexOf(key)]
+                    };
+                  });
+                };
+                
+                const hasSubIndicators = selectedIndicator?.subIndicatorIds;
+                
+                return (
+                  <div className="flex items-end justify-around gap-4 h-80">
+                    {quarterStats.months.map((month, idx) => {
+                      const val = quarterStats.monthlyValues[idx];
+                      const maxVal = Math.max(...quarterStats.monthlyValues, 1);
+                      const heightPercent = Math.max((val / maxVal) * 100, 10);
+                      const expected = quarterStats.target / 3;
+                      const mPerf = Math.min((val / expected) * 100, 100);
+                      const mColor = getPerformanceColor(mPerf);
+                      
+                      const subValues = getSubIndicatorMonthlyValues(month);
+                      
+                      return (
+                        <div key={month} className="flex-1 flex flex-col items-center group cursor-pointer">
+                          <div className="text-sm font-bold text-white mb-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {val.toLocaleString()}
+                          </div>
+                          <div className="w-full flex items-end h-64">
+                            {hasSubIndicators ? (
+                              // Show stacked bars for sub-indicators
+                              <div className="w-full flex flex-col justify-end">
+                                {subValues.map((sub, subIdx) => {
+                                  const subHeight = maxVal > 0 ? (sub.value / maxVal) * 100 : 0;
+                                  return (
+                                    <div
+                                      key={sub.id}
+                                      className="w-full transition-all duration-300 group-hover:scale-105" 
+                                      style={{
+                                        height: `${Math.max(subHeight, 2)}%`,
+                                        backgroundColor: sub.color,
+                                        opacity: 0.8
+                                      }}
+                                      title={`${sub.name}: ${sub.value.toLocaleString()}`}
+                                    />
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              // Show single bar for regular indicators
+                              <div
+                                className="w-full rounded-t-xl transition-all duration-300 group-hover:scale-105"
+                                style={{
+                                  height: `${heightPercent}%`,
+                                  background: `linear-gradient(180deg, ${getHexForColor(mColor)} 0%, ${getHexForColor(mColor)}80 100%)`,
+                                  boxShadow: `0 0 20px ${getHexForColor(mColor)}40`
+                                }}
+                              />
+                            )}
+                          </div>
+                          <span className={`text-xs font-semibold mt-3 uppercase tracking-wide transition-colors ${hoveredMonth === month ? 'text-white' : 'text-slate-400'}`}
+                            onMouseEnter={() => setHoveredMonth(month)}
+                            onMouseLeave={() => setHoveredMonth(null)}>
+                            {month.substring(0, 3)}
+                          </span>
+                          
+                          {/* Sub-indicator legend */}
+                          {hasSubIndicators && idx === 0 && (
+                            <div className="mt-2 space-y-1">
+                              {subValues.slice(0, 3).map((sub, subIdx) => (
+                                <div key={sub.id} className="flex items-center gap-1">
+                                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sub.color }} />
+                                  <span className="text-xs text-slate-400 truncate">{sub.name.split(' ').slice(0, 2).join(' ')}</span>
+                                </div>
+                              ))}
+                              {subValues.length > 3 && <span className="text-xs text-slate-400">+{subValues.length - 3} more</span>}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           </div>
 
@@ -734,19 +818,30 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
                     />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-xl font-bold text-slate-800">{Math.round(quarterStats.performance)}%</span>
+                    <span className="text-xl font-bold text-slate-800">{Math.round(Math.min(quarterStats.performance, 100))}%</span>
                   </div>
                 </div>
                 {/* Stats */}
                 <div className="flex-1 space-y-2">
-                  <div className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
-                    <span className="text-xs text-slate-500">Target</span>
-                    <span className="text-sm font-bold text-slate-700">{quarterStats.target.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
-                    <span className="text-xs text-slate-500">Actual</span>
-                    <span className="text-sm font-bold text-slate-700">{quarterStats.totalActual.toLocaleString()}</span>
-                  </div>
+                  {selectedIndicator?.subIndicatorIds ? (
+                    // Parent indicator with sub-indicators - show average info instead of target
+                    <div className="flex justify-between items-center p-2 bg-blue-50 rounded-lg">
+                      <span className="text-xs text-blue-600 font-medium">Average of Sub-indicators</span>
+                      <span className="text-sm font-bold text-blue-700">{Math.round(quarterStats.performance)}%</span>
+                    </div>
+                  ) : (
+                    // Regular indicator - show target and actual
+                    <>
+                      <div className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
+                        <span className="text-xs text-slate-500">Target</span>
+                        <span className="text-sm font-bold text-slate-700">{quarterStats.target.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
+                        <span className="text-xs text-slate-500">Actual</span>
+                        <span className="text-sm font-bold text-slate-700">{quarterStats.totalActual.toLocaleString()}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -775,14 +870,25 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
                 </div>
                 {/* Stats */}
                 <div className="flex-1 space-y-2">
-                  <div className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
-                    <span className="text-xs text-slate-500">Yearly Target</span>
-                    <span className="text-sm font-bold text-slate-700">{(selectedIndicator.annualTarget || 0).toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between items-center p-2 bg-indigo-50 rounded-lg">
-                    <span className="text-xs text-indigo-600">Status</span>
-                    <span className="text-sm font-bold text-indigo-700">{annualCompletion >= 75 ? 'On Track' : annualCompletion >= 50 ? 'Progressing' : 'Needs Attention'}</span>
-                  </div>
+                  {selectedIndicator?.subIndicatorIds ? (
+                    // Parent indicator with sub-indicators - show average info instead of target
+                    <div className="flex justify-between items-center p-2 bg-blue-50 rounded-lg">
+                      <span className="text-xs text-blue-600 font-medium">Average of Sub-indicators</span>
+                      <span className="text-sm font-bold text-blue-700">{Math.round(quarterStats.performance)}%</span>
+                    </div>
+                  ) : (
+                    // Regular indicator - show target and actual
+                    <>
+                      <div className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
+                        <span className="text-xs text-slate-500">Target</span>
+                        <span className="text-sm font-bold text-slate-700">{quarterStats.target.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
+                        <span className="text-xs text-slate-500">Actual</span>
+                        <span className="text-sm font-bold text-slate-700">{quarterStats.totalActual.toLocaleString()}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -837,13 +943,14 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
                       {idx + 1}
                     </span>
                     <span className={`text-sm font-bold text-${subColor}-600`}>
-                      {Math.round(sub.performance)}%
+                      {Math.round(Math.min(sub.performance, 100))}%
                     </span>
                   </div>
 
                   <h4 className="text-sm font-medium text-slate-700 leading-snug mb-3 line-clamp-2">{sub.name}</h4>
 
                   <div className="space-y-2">
+                    <div className="text-xs text-slate-600 font-medium mb-1">Quarterly Progress</div>
                     <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
                       <div
                         className={`h-full bg-${subColor}-500 rounded-full transition-all duration-500`}
@@ -853,7 +960,32 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
 
                     <div className="flex justify-between text-xs text-slate-500">
                       <span>{sub.actual.toLocaleString()} actual</span>
-                      <span>{sub.target.toLocaleString()} target</span>
+                      <span>{sub.target.toLocaleString()} quarterly target</span>
+                    </div>
+
+                    <div className="text-xs text-slate-600 font-medium mb-1 mt-2">Annual Progress</div>
+                    <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                      {(() => {
+                        const subIndicatorData = INDICATORS.find(ind => ind.id === sub.id);
+                        const subAnnualTarget = subIndicatorData?.targets.annual || 0;
+                        const subAnnualProgress = Number(subAnnualTarget) > 0 ? Math.min((sub.actual / Number(subAnnualTarget)) * 100, 100) : 0;
+                        const subAnnualColor = getPerformanceColor(subAnnualProgress);
+                        return (
+                          <div
+                            className={`h-full bg-${subAnnualColor}-500 rounded-full transition-all duration-500`}
+                            style={{ width: `${Math.min(subAnnualProgress, 100)}%` }}
+                          ></div>
+                        );
+                      })()}
+                    </div>
+
+                    <div className="flex justify-between text-xs text-slate-500 mt-1">
+                      <span>Annual: {(() => {
+                        const subIndicatorData = INDICATORS.find(ind => ind.id === sub.id);
+                        const subAnnualTarget = subIndicatorData?.targets.annual || 0;
+                        const subAnnualProgress = Number(subAnnualTarget) > 0 ? Math.min(Math.round((sub.actual / Number(subAnnualTarget)) * 100), 100) : 0;
+                        return `${subAnnualProgress}% of ${subAnnualTarget.toLocaleString()}`;
+                      })()}</span>
                     </div>
                   </div>
                 </div>
@@ -867,3 +999,4 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
 };
 
 export default AnalyticsView;
+

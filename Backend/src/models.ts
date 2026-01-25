@@ -65,7 +65,7 @@ export interface IUser extends Document {
     approvedAt?: Date;
     approvedBy?: string;
     unit?: string; // Unit assignment (e.g., "Agriculture And Natural Resource Unit")
-    userType?: 'super_admin' | 'head' | 'employee'; // Role type within the system
+    userType?: 'super_admin' | 'leader' | 'head' | 'employee'; // Role type within the system
 }
 
 // Indicator Assignment Interface
@@ -139,7 +139,7 @@ export const PillarModel = mongoose.model<any>('Pillar', PillarSchema);
 const MonitoringEntrySchema = new Schema({
     pillarId: { type: String, required: true },
     outputId: { type: String, required: true },
-    indicatorId: { type: String, required: true, index: true },
+    indicatorId: { type: String, required: true },
     quarterId: { type: String, required: true },
     month: { type: String, required: true },
     value: { type: Number, required: true },
@@ -228,10 +228,24 @@ const SubmissionSchema = new Schema({
         uploadedAt: { type: Date, default: Date.now }
     }],
     submittedBy: { type: String },
-    timestamp: { type: Date, default: Date.now }
+    timestamp: { type: Date, default: Date.now },
+    // New fields for modification tracking
+    hasBeenModified: { type: Boolean, default: false },
+    modifiedAt: { type: Date },
+    modifiedBy: { type: String },
+    originalValue: { type: Number },
+    originalSubValues: { type: Schema.Types.Mixed },
+    originalComments: { type: String },
+    modificationStatus: { type: String, enum: ['original', 'pending_approval', 'approved_modified'], default: 'original' },
+    changeRequestId: { type: String } // Reference to DataChangeRequest
 });
 
 export const SubmissionModel = mongoose.model('Submission', SubmissionSchema, 'Submissions');
+
+// Add indexes for efficient duplicate detection and modification tracking
+SubmissionSchema.index({ pillarId: 1, indicatorId: 1, quarterId: 1, month: 1 }, { unique: true });
+SubmissionSchema.index({ modificationStatus: 1 });
+SubmissionSchema.index({ submittedBy: 1 });
 
 // Indicator Assignment Schema - for tracking which indicators are assigned to which users
 const IndicatorAssignmentSchema = new Schema({
@@ -488,6 +502,5 @@ const FlatIndicatorSchema = new Schema({
 // Indexes for efficient queries
 FlatIndicatorSchema.index({ pillarId: 1 });
 FlatIndicatorSchema.index({ outputId: 1 });
-FlatIndicatorSchema.index({ id: 1 });
 
 export const FlatIndicatorModel = mongoose.model<IFlatIndicator>('FlatIndicator', FlatIndicatorSchema, 'FlatIndicators');
