@@ -926,7 +926,7 @@ export const INDICATORS: Indicator[] = [
   },
   {
     "id": "69a",
-    "name": "Percentage of people screened positive to Hypertension enrolled into care and treatment",
+    "name":"Hypertension",
     "targets": {
       "q1": "20%",
       "q2": "40%",
@@ -938,7 +938,7 @@ export const INDICATORS: Indicator[] = [
   },
   {
     "id": "69b",
-    "name": "Percentage of people screened positive to Diabetes enrolled into care and treatment",
+    "name": "`Diabetes",
     "targets": {
       "q1": "20%",
       "q2": "40%",
@@ -1335,7 +1335,7 @@ export const INDICATORS: Indicator[] = [
   },
   {
     "id": "99a",
-    "name": "Percentage of Education information recorded into the SDMS system with accuracy - Students",
+    "name": "Students",
     "targets": {
       "q1": "-",
       "q2": "70%",
@@ -1347,7 +1347,7 @@ export const INDICATORS: Indicator[] = [
   },
   {
     "id": "99b",
-    "name": "Percentage of Education information recorded into the SDMS system with accuracy - Material and Buildings",
+    "name": "`Material and Buildings",
     "targets": {
       "q1": "-",
       "q2": "70%",
@@ -1359,7 +1359,7 @@ export const INDICATORS: Indicator[] = [
   },
   {
     "id": "99c",
-    "name": "Percentage of Education information recorded into the SDMS system with accuracy - Workers",
+    "name": "Workers",
     "targets": {
       "q1": "-",
       "q2": "70%",
@@ -1393,11 +1393,52 @@ export const INDICATORS: Indicator[] = [
       "annual": "98%"
     },
     "isDual": true,
+    "measurementType": "percentage",
+    "subIndicatorIds": {
+      "primary": "101a",
+      "secondary": "101b",
+      "tvet": "101c"
+    }
+  },
+  {
+    "id": "101a",
+    "name": "Primary students attending school",
+    "targets": {
+      "q1": "98%",
+      "q2": "98%",
+      "q3": "98%",
+      "q4": "98%",
+      "annual": "98%"
+    },
+    "measurementType": "percentage"
+  },
+  {
+    "id": "101b",
+    "name": "Secondary students attending school",
+    "targets": {
+      "q1": "98%",
+      "q2": "98%",
+      "q3": "98%",
+      "q4": "98%",
+      "annual": "98%"
+    },
+    "measurementType": "percentage"
+  },
+  {
+    "id": "101c",
+    "name": "TVET students attending school",
+    "targets": {
+      "q1": "98%",
+      "q2": "98%",
+      "q3": "98%",
+      "q4": "98%",
+      "annual": "98%"
+    },
     "measurementType": "percentage"
   },
   {
     "id": "102",
-    "name": "Percentage of Students passing comprehensive assessment: Primary",
+    "name": "Primary",
     "targets": {
       "q1": 0,
       "q2": "80%",
@@ -1410,7 +1451,7 @@ export const INDICATORS: Indicator[] = [
   },
   {
     "id": "103",
-    "name": "Percentage of Students passing comprehensive assessment: Secondary",
+    "name": "Secondary",
     "targets": {
       "q1": 0,
       "q2": "80%",

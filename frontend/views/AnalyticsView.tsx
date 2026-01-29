@@ -268,18 +268,64 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
       Object.entries(subMapping).forEach(([key, subId]) => {
         const subIndicator = INDICATORS.find(i => i.id === subId);
         if (subIndicator) {
-          // Get entries for this sub-indicator from selected quarter only
-          const subActual = quarterEntries.reduce((acc, curr) => {
-            return acc + (curr.subValues?.[key] || 0);
-          }, 0);
+          let subActual = 0;
+          let subTarget = 0;
+
+          // Special handling for indicators 69, 99, 101 that have database targets
+          if (['69', '99', '101'].includes(selectedIndicator.id)) {
+            const values = quarterEntries.reduce((acc, curr) => {
+              // Use the same special handling as in quarterly calculation
+              let actual = 0;
+              let target = 0;
+              
+              if (selectedIndicator.id === '69') {
+                actual = curr.subValues?.[`${key}_enrolled`] || 0;
+                target = curr.subValues?.[`${key}_target`] || 0;
+              } else if (selectedIndicator.id === '99') {
+                actual = curr.subValues?.[`${key}_accurate`] || 0;
+                target = curr.subValues?.[`${key}_target`] || 0;
+              } else if (selectedIndicator.id === '101') {
+                actual = curr.subValues?.[`${key}_attending`] || 0;
+                target = curr.subValues?.[`${key}_target`] || 0;
+              }
+              
+              return {
+                actual: acc.actual + actual,
+                target: acc.target + target
+              };
+            }, {actual: 0, target: 0});
+            
+            subActual = values.actual;
+            subTarget = values.target;
+          } else {
+            // Regular sub-indicator calculation
+            subActual = quarterEntries.reduce((acc, curr) => {
+              return acc + (curr.subValues?.[key] || 0);
+            }, 0);
+            subTarget = parseValue(subIndicator.targets.annual);
+          }
           
-          const subAnnualTarget = Number(subIndicator.targets.annual);
-          
-          if (subAnnualTarget > 0) {
-            let subPerf = (subActual / subAnnualTarget) * 100;
-            if (subIndicator.measurementType === 'decreasing') {
-              subPerf = subActual > 0 ? (subAnnualTarget / subActual) * 100 : 100;
+          if (subTarget > 0) {
+            let subPerf = 0;
+            
+            if (['69', '99', '101'].includes(selectedIndicator.id)) {
+              // For percentage indicators: calculate actual percentage and compare to annual target percentage
+              const calculatedPercentage = (subActual / subTarget) * 100;
+              const annualTargetPercentage = parseValue(subIndicator.targets.annual);
+              
+              if (annualTargetPercentage > 0) {
+                subPerf = Math.min((calculatedPercentage / annualTargetPercentage) * 100, 100);
+              } else {
+                subPerf = calculatedPercentage;
+              }
+            } else {
+              // Regular calculation for other indicators
+              subPerf = (subActual / subTarget) * 100;
+              if (subIndicator.measurementType === 'decreasing') {
+                subPerf = subActual > 0 ? (subTarget / subActual) * 100 : 100;
+              }
             }
+            
             subAnnualPerformances.push(Math.min(subPerf, 100));
           }
         }
@@ -304,13 +350,13 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
       ? Math.max(...quarterEntries.map(e => e.value)) // Use latest value in the quarter
       : 0;
     
-    const annualTarget = selectedIndicator.targets.annual;
+    const annualTarget = parseValue(selectedIndicator.targets.annual);
     
     if (annualTarget === 0) return 0;
     
-    const performance = (currentQuarterActual / Number(annualTarget)) * 100;
+    const performance = (currentQuarterActual / annualTarget) * 100;
     return Math.min(performance, 100);
-  }, [selectedIndicator, entriesByIndicator, selectedQuarterId]);
+  }, [selectedIndicator, entriesByIndicator, selectedQuarterId, selectedQuarter]);
 
   const qColor = quarterStats ? getPerformanceColor(quarterStats.performance) : 'blue';
 
@@ -976,7 +1022,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
                     <>
                       <div className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
                         <span className="text-xs text-slate-500">Target</span>
-                        <span className="text-sm font-bold text-slate-700">{Number(selectedIndicator.targets.annual).toLocaleString()}</span>
+                        <span className="text-sm font-bold text-slate-700">{parseValue(selectedIndicator.targets.annual).toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
                         <span className="text-xs text-slate-500">Actual</span>
@@ -1054,16 +1100,67 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
                     </div>
 
                     <div className="flex justify-between text-xs text-slate-500">
-                      <span>{sub.actual.toLocaleString()} actual</span>
-                      <span>{sub.target.toLocaleString()} quarterly target</span>
+                      <span>
+                        {(() => {
+                          const parentIndicator = INDICATORS.find(ind => 
+                            ind.subIndicatorIds && Object.values(ind.subIndicatorIds).includes(sub.id)
+                          );
+                          
+                          // For percentage indicators 69, 99, 101, show calculated percentage
+                          if (parentIndicator && ['69', '99', '101'].includes(parentIndicator.id)) {
+                            const calculatedPercentage = sub.calculatedPercentage || 0;
+                            return `${calculatedPercentage.toFixed(1)}% achieved`;
+                          }
+                          
+                          return `${sub.actual.toLocaleString()} actual`;
+                        })()}
+                      </span>
+                      <span>
+                        {(() => {
+                          const subIndicatorData = INDICATORS.find(ind => ind.id === sub.id);
+                          const parentIndicator = INDICATORS.find(ind => 
+                            ind.subIndicatorIds && Object.values(ind.subIndicatorIds).includes(sub.id)
+                          );
+                          
+                          // Check if this is a percentage sub-indicator from indicators 69, 99, or 101
+                          if (parentIndicator && ['69', '99', '101'].includes(parentIndicator.id) && subIndicatorData) {
+                            const quarterId = selectedQuarter?.id || 'q1';
+                            const percentageTarget = parseValue((subIndicatorData.targets as any)[quarterId]);
+                            return `${percentageTarget}% quarterly target`;
+                          }
+                          
+                          return `${sub.target.toLocaleString()} quarterly target`;
+                        })()}
+                      </span>
                     </div>
 
                     <div className="text-xs text-slate-600 font-medium mb-1 mt-2">Annual Progress</div>
                     <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
                       {(() => {
                         const subIndicatorData = INDICATORS.find(ind => ind.id === sub.id);
-                        const subAnnualTarget = subIndicatorData?.targets.annual || 0;
-                        const subAnnualProgress = Number(subAnnualTarget) > 0 ? Math.min((sub.actual / Number(subAnnualTarget)) * 100, 100) : 0;
+                        const parentIndicator = INDICATORS.find(ind => 
+                          ind.subIndicatorIds && Object.values(ind.subIndicatorIds).includes(sub.id)
+                        );
+                        
+                        let subAnnualProgress = 0;
+                        
+                        // For percentage indicators 69, 99, 101, use calculated percentage vs annual target
+                        if (parentIndicator && ['69', '99', '101'].includes(parentIndicator.id) && subIndicatorData) {
+                          const calculatedPercentage = sub.calculatedPercentage || 0;
+                          const annualTargetPercentage = parseValue(subIndicatorData.targets.annual || 0);
+                          
+                          if (annualTargetPercentage > 0) {
+                            // Performance is how well the calculated percentage meets the annual target percentage
+                            subAnnualProgress = Math.min((calculatedPercentage / annualTargetPercentage) * 100, 100);
+                          } else {
+                            subAnnualProgress = calculatedPercentage; // No annual target, show raw percentage
+                          }
+                        } else {
+                          // Regular calculation for other indicators
+                          const subAnnualTarget = parseValue(subIndicatorData?.targets.annual || 0);
+                          subAnnualProgress = subAnnualTarget > 0 ? Math.min((sub.actual / subAnnualTarget) * 100, 100) : 0;
+                        }
+                        
                         const subAnnualColor = getPerformanceColor(subAnnualProgress);
                         return (
                           <div
@@ -1075,11 +1172,59 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
                     </div>
 
                     <div className="flex justify-between text-xs text-slate-500 mt-1">
+                      <span>
+                        {(() => {
+                          const parentIndicator = INDICATORS.find(ind => 
+                            ind.subIndicatorIds && Object.values(ind.subIndicatorIds).includes(sub.id)
+                          );
+                          
+                          // For percentage indicators 69, 99, 101, show calculated percentage
+                          if (parentIndicator && ['69', '99', '101'].includes(parentIndicator.id)) {
+                            const calculatedPercentage = sub.calculatedPercentage || 0;
+                            return `${calculatedPercentage.toFixed(1)}% achieved`;
+                          }
+                          
+                          return `${sub.actual.toLocaleString()} actual`;
+                        })()}
+                      </span>
+                      <span>
+                        {(() => {
+                          const subIndicatorData = INDICATORS.find(ind => ind.id === sub.id);
+                          const parentIndicator = INDICATORS.find(ind => 
+                            ind.subIndicatorIds && Object.values(ind.subIndicatorIds).includes(sub.id)
+                          );
+                          
+                          // Check if this is a percentage sub-indicator from indicators 69, 99, or 101
+                          if (parentIndicator && ['69', '99', '101'].includes(parentIndicator.id) && subIndicatorData) {
+                            const annualTargetPercentage = parseValue(subIndicatorData.targets.annual || 0);
+                            return `${annualTargetPercentage}% annual target`;
+                          }
+                          
+                          const subAnnualTarget = parseValue(subIndicatorData?.targets.annual || 0);
+                          return `${subAnnualTarget.toLocaleString()} annual target`;
+                        })()}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between text-xs text-slate-500 mt-1">
                       <span>Annual: {(() => {
-                        const subIndicatorData = INDICATORS.find(ind => ind.id === sub.id);
-                        const subAnnualTarget = subIndicatorData?.targets.annual || 0;
-                        const subAnnualProgress = Number(subAnnualTarget) > 0 ? Math.min(Math.round((sub.actual / Number(subAnnualTarget)) * 100), 100) : 0;
-                        return `${subAnnualProgress}% of ${subAnnualTarget.toLocaleString()}`;
+                        const parentIndicator = INDICATORS.find(ind => 
+                          ind.subIndicatorIds && Object.values(ind.subIndicatorIds).includes(sub.id)
+                        );
+                        
+                        if (parentIndicator && ['69', '99', '101'].includes(parentIndicator.id)) {
+                          // Use calculated percentage for indicators 69, 99, 101
+                          const calculatedPercentage = sub.calculatedPercentage || 0;
+                          const subIndicatorData = INDICATORS.find(ind => ind.id === sub.id);
+                          const annualTargetPercentage = parseValue(subIndicatorData?.targets.annual || 0);
+                          return `${calculatedPercentage.toFixed(1)}% of ${annualTargetPercentage}%`;
+                        } else {
+                          // Regular calculation for other indicators
+                          const subIndicatorData = INDICATORS.find(ind => ind.id === sub.id);
+                          const subAnnualTarget = parseValue(subIndicatorData?.targets.annual || 0);
+                          const subAnnualProgress = subAnnualTarget > 0 ? Math.min(Math.round((sub.actual / subAnnualTarget) * 100), 100) : 0;
+                          return `${subAnnualProgress}% of ${subAnnualTarget.toLocaleString()}`;
+                        }
                       })()}</span>
                     </div>
                   </div>

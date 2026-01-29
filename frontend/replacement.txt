@@ -1,0 +1,22 @@
+// Replace lines 1056-1059 in AnalyticsView.tsx with this:
+
+<div className="flex justify-between text-xs text-slate-500">
+  <span>{sub.actual.toLocaleString()} actual</span>
+  <span>
+    {(() => {
+      const subIndicatorData = INDICATORS.find(ind => ind.id === sub.id);
+      const parentIndicator = INDICATORS.find(ind => 
+        ind.subIndicatorIds && Object.values(ind.subIndicatorIds).includes(sub.id)
+      );
+      
+      // Check if this is a percentage sub-indicator from indicators 69, 99, or 101
+      if (parentIndicator && ['69', '99', '101'].includes(parentIndicator.id) && subIndicatorData) {
+        const quarterId = selectedQuarter?.id || 'q1';
+        const percentageTarget = parseValue((subIndicatorData.targets as any)[quarterId]);
+        return `${percentageTarget}% target`;
+      }
+      
+      return `${sub.target.toLocaleString()} quarterly target`;
+    })()}
+  </span>
+</div>

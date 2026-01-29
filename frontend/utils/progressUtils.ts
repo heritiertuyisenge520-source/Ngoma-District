@@ -106,6 +106,36 @@ export const calculateQuarterProgress = ({ indicator, entries, quarterId, months
         // Try the correct key first
         if (subValues[key] !== undefined) return subValues[key];
 
+        // Special handling for indicator 69 sub-indicators
+        if (key === 'hypertension') {
+            return subValues['hypertension_enrolled'] || 0;
+        }
+        if (key === 'diabetes') {
+            return subValues['diabetes_enrolled'] || 0;
+        }
+
+        // Special handling for indicator 101 sub-indicators
+        if (key === 'primary') {
+            return subValues['primary_attending'] || 0;
+        }
+        if (key === 'secondary') {
+            return subValues['secondary_attending'] || 0;
+        }
+        if (key === 'tvet') {
+            return subValues['tvet_attending'] || 0;
+        }
+
+        // Special handling for indicator 99 sub-indicators
+        if (key === 'students') {
+            return subValues['students_accurate'] || 0;
+        }
+        if (key === 'material') {
+            return subValues['material_accurate'] || 0;
+        }
+        if (key === 'workers') {
+            return subValues['workers_accurate'] || 0;
+        }
+
         // Try legacy keys
         const legacyKeys = legacyKeyMap[key];
         if (legacyKeys) {
@@ -117,52 +147,162 @@ export const calculateQuarterProgress = ({ indicator, entries, quarterId, months
         return 0;
     };
 
+    // Helper to get both actual and target values for percentage indicators
+    const getSubValueWithTarget = (subValues: Record<string, number> | undefined, key: string): {actual: number, target: number} => {
+        if (!subValues) return {actual: 0, target: 0};
+
+        // Special handling for indicator 69 sub-indicators
+        if (key === 'hypertension') {
+            return {
+                actual: subValues['hypertension_enrolled'] || 0,
+                target: subValues['hypertension_target'] || 0
+            };
+        }
+        if (key === 'diabetes') {
+            return {
+                actual: subValues['diabetes_enrolled'] || 0,
+                target: subValues['diabetes_target'] || 0
+            };
+        }
+
+        // Special handling for indicator 101 sub-indicators
+        if (key === 'primary') {
+            return {
+                actual: subValues['primary_attending'] || 0,
+                target: subValues['primary_target'] || 0
+            };
+        }
+        if (key === 'secondary') {
+            return {
+                actual: subValues['secondary_attending'] || 0,
+                target: subValues['secondary_target'] || 0
+            };
+        }
+        if (key === 'tvet') {
+            return {
+                actual: subValues['tvet_attending'] || 0,
+                target: subValues['tvet_target'] || 0
+            };
+        }
+
+        // Special handling for indicator 99 sub-indicators
+        if (key === 'students') {
+            return {
+                actual: subValues['students_accurate'] || 0,
+                target: subValues['students_target'] || 0
+            };
+        }
+        if (key === 'material') {
+            return {
+                actual: subValues['material_accurate'] || 0,
+                target: subValues['material_target'] || 0
+            };
+        }
+        if (key === 'workers') {
+            return {
+                actual: subValues['workers_accurate'] || 0,
+                target: subValues['workers_target'] || 0
+            };
+        }
+
+        return {actual: 0, target: 0};
+    };
+
     if (indicator.subIndicatorIds) {
         const subMapping = indicator.subIndicatorIds;
 
         Object.entries(subMapping).forEach(([key, subId]) => {
             const subIndicator = INDICATORS.find(i => i.id === subId);
             if (subIndicator) {
-                const subActual = quarterEntries.reduce((acc, curr) => {
-                    const val = getSubValue(curr.subValues, key);
-                    return acc + val;
-                }, 0);
-
+                let subActual = 0;
                 let subTarget = 0;
-                const st1 = parseValue(subIndicator.targets.q1);
-                const st2 = parseValue(subIndicator.targets.q2);
-                const st3 = parseValue(subIndicator.targets.q3);
-                const st4 = parseValue(subIndicator.targets.q4);
 
-                if (subIndicator.measurementType === 'percentage' || subIndicator.measurementType === 'decreasing') {
-                    // For percentage sub-indicators, use current quarter target only
-                    switch (quarterId) {
-                        case 'q1': subTarget = st1; break;
-                        case 'q2': subTarget = st2; break;
-                        case 'q3': subTarget = st3; break;
-                        case 'q4': subTarget = st4; break;
-                    }
+                // Special handling for indicators 69, 99, 101 that have database targets
+                if (['69', '99', '101'].includes(indicator.id)) {
+                    const values = quarterEntries.reduce((acc, curr) => {
+                        const val = getSubValueWithTarget(curr.subValues, key);
+                        return {
+                            actual: acc.actual + val.actual,
+                            target: acc.target + val.target
+                        };
+                    }, {actual: 0, target: 0});
+                    
+                    subActual = values.actual;
+                    subTarget = values.target;
                 } else {
-                    // For numeric sub-indicators, use cumulative targets
-                    switch (quarterId) {
-                        case 'q1': subTarget = st1; break;
-                        case 'q2': subTarget = st1 + st2; break;
-                        case 'q3': subTarget = st1 + st2 + st3; break;
-                        case 'q4': subTarget = st1 + st2 + st3 + st4; break;
+                    // Regular sub-indicator calculation
+                    subActual = quarterEntries.reduce((acc, curr) => {
+                        const val = getSubValue(curr.subValues, key);
+                        return acc + val;
+                    }, 0);
+
+                    const st1 = parseValue(subIndicator.targets.q1);
+                    const st2 = parseValue(subIndicator.targets.q2);
+                    const st3 = parseValue(subIndicator.targets.q3);
+                    const st4 = parseValue(subIndicator.targets.q4);
+
+                    if (subIndicator.measurementType === 'percentage' || subIndicator.measurementType === 'decreasing') {
+                        // For percentage sub-indicators, use current quarter target only
+                        switch (quarterId) {
+                            case 'q1': subTarget = st1; break;
+                            case 'q2': subTarget = st2; break;
+                            case 'q3': subTarget = st3; break;
+                            case 'q4': subTarget = st4; break;
+                        }
+                    } else {
+                        // For numeric sub-indicators, use cumulative targets
+                        switch (quarterId) {
+                            case 'q1': subTarget = st1; break;
+                            case 'q2': subTarget = st1 + st2; break;
+                            case 'q3': subTarget = st1 + st2 + st3; break;
+                            case 'q4': subTarget = st1 + st2 + st3 + st4; break;
+                        }
                     }
                 }
 
                 // Always show sub-indicator, even if target is 0
                 let subPerf = 0;
+                let calculatedPercentage = 0; // Store the calculated percentage for display
+                
                 if (subTarget > 0) {
-                    subPerf = (subActual / subTarget) * 100;
-                    if (subIndicator.measurementType === 'decreasing') {
-                        // For decreasing indicators, invert the calculation: target / actual
-                        subPerf = subActual > 0 ? (subTarget / subActual) * 100 : 100;
+                    if (['69', '99', '101'].includes(indicator.id)) {
+                        // For percentage indicators 69, 99, 101: calculate actual percentage and compare to target percentage
+                        calculatedPercentage = (subActual / subTarget) * 100;
+                        
+                        // Get the target percentage from sub-indicator definition
+                        let targetPercentage = 0;
+                        const st1 = parseValue(subIndicator.targets.q1);
+                        const st2 = parseValue(subIndicator.targets.q2);
+                        const st3 = parseValue(subIndicator.targets.q3);
+                        const st4 = parseValue(subIndicator.targets.q4);
+                        
+                        switch (quarterId) {
+                            case 'q1': targetPercentage = st1; break;
+                            case 'q2': targetPercentage = st2; break;
+                            case 'q3': targetPercentage = st3; break;
+                            case 'q4': targetPercentage = st4; break;
+                        }
+                        
+                        // Performance is how well the calculated percentage meets the target percentage
+                        if (targetPercentage > 0) {
+                            subPerf = Math.min((calculatedPercentage / targetPercentage) * 100, 100);
+                        } else {
+                            subPerf = calculatedPercentage; // No target, show raw percentage
+                        }
+                    } else {
+                        // Regular calculation for other indicators
+                        subPerf = (subActual / subTarget) * 100;
+                        calculatedPercentage = subPerf; // Store for display
+                        if (subIndicator.measurementType === 'decreasing') {
+                            // For decreasing indicators, invert the calculation: target / actual
+                            subPerf = subActual > 0 ? (subTarget / subActual) * 100 : 100;
+                            calculatedPercentage = subPerf;
+                        }
                     }
                 } else if (subActual > 0) {
                     // If no target but has actual, show 100% (exceeded no target)
                     subPerf = 100;
+                    calculatedPercentage = 100;
                 }
 
                 subIndicatorDetails.push({
@@ -171,7 +311,8 @@ export const calculateQuarterProgress = ({ indicator, entries, quarterId, months
                     name: subIndicator.name,
                     actual: subActual,
                     target: subTarget,
-                    performance: Math.min(subPerf, 100) // Ensure no progress exceeds 100%
+                    performance: Math.min(subPerf, 100), // Ensure no progress exceeds 100%
+                    calculatedPercentage: Math.round(calculatedPercentage) // Add calculated percentage for display
                 });
             }
         });
