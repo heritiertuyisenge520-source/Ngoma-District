@@ -81,7 +81,20 @@ const ProgressCalculatorView: React.FC<ProgressCalculatorViewProps> = ({ entries
             );
 
             // Get entries for this sub-indicator with legacy key fallback
-            const subActual = indicatorEntries.reduce((acc, curr) => {
+            // For annual, include all entries; for quarterly, filter by timeline
+            const relevantEntries = isAnnual ? 
+                entries.filter(e => e.indicatorId === indicatorId) :
+                indicatorEntries;
+            
+            console.log('🔍 DEBUG - Sub-indicator calculation:', {
+                subIndicatorName: subInd.name,
+                isAnnual,
+                totalEntries: entries.length,
+                relevantEntriesCount: relevantEntries.length,
+                subKey
+            });
+                
+            const subActual = relevantEntries.reduce((acc, curr) => {
                 const val = getSubValue(curr.subValues, subKey || '');
                 return acc + val;
             }, 0);
@@ -94,7 +107,14 @@ const ProgressCalculatorView: React.FC<ProgressCalculatorViewProps> = ({ entries
             const st4 = parseValue(subInd.targets?.q4);
 
             if (isAnnual) {
-                subTarget = parseValue(subInd.targets?.annual);
+                subTarget = parseValue(subInd.targets?.annual) || (st1 + st2 + st3 + st4);
+                console.log('🔍 DEBUG - Annual target calculation:', {
+                    subIndicatorName: subInd.name,
+                    annualTarget: subInd.targets?.annual,
+                    parsedAnnualTarget: parseValue(subInd.targets?.annual),
+                    quarterlySum: st1 + st2 + st3 + st4,
+                    finalSubTarget: subTarget
+                });
             } else {
                 switch (timelineId) {
                     case 'q1': subTarget = st1; break;
@@ -106,6 +126,13 @@ const ProgressCalculatorView: React.FC<ProgressCalculatorViewProps> = ({ entries
 
             const performance = subTarget > 0 ? (subActual / subTarget) * 100 : 0;
 
+            console.log('🔍 DEBUG - Final sub-indicator performance:', {
+                subIndicatorName: subInd.name,
+                subActual,
+                subTarget,
+                performance: Math.min(performance, 100)
+            });
+
             return {
                 id: subInd.id,
                 name: subInd.name,
@@ -114,7 +141,7 @@ const ProgressCalculatorView: React.FC<ProgressCalculatorViewProps> = ({ entries
                 performance: Math.min(performance, 100)
             };
         });
-    }, [subIndicators, indicatorEntries, timelineId, isAnnual, selectedIndicator, hasSubIndicators]);
+    }, [subIndicators, indicatorEntries, entries, indicatorId, timelineId, isAnnual, selectedIndicator, hasSubIndicators]);
 
     const calcResult = useMemo(() => {
         if (!selectedIndicator) return null;
@@ -124,13 +151,37 @@ const ProgressCalculatorView: React.FC<ProgressCalculatorViewProps> = ({ entries
                 const avgPerf = subIndicatorProgress.reduce((a, b) => a + b.performance, 0) / subIndicatorProgress.length;
                 const totalActual = subIndicatorProgress.reduce((a, b) => a + b.actual, 0);
                 const totalTarget = subIndicatorProgress.reduce((a, b) => a + b.target, 0);
-                return { totalActual, target: totalTarget, performance: avgPerf };
+                
+                console.log('🔍 DEBUG - Composite annual calculation:', {
+                    indicatorName: selectedIndicator.name,
+                    subIndicatorProgress: subIndicatorProgress.map(s => ({
+                        name: s.name,
+                        performance: s.performance,
+                        actual: s.actual,
+                        target: s.target
+                    })),
+                    avgPerf,
+                    totalActual,
+                    totalTarget
+                });
+                
+                // Ensure we don't return 0 if sub-indicators have valid progress
+                const finalPerformance = avgPerf > 0 ? avgPerf : 
+                    (totalTarget > 0 ? (totalActual / totalTarget) * 100 : 0);
+                    
+                console.log('🔍 DEBUG - Final composite result:', {
+                    finalPerformance: Math.min(finalPerformance, 100),
+                    avgPerf,
+                    fallbackPerformance: totalTarget > 0 ? (totalActual / totalTarget) * 100 : 0
+                });
+                
+                return { totalActual, target: totalTarget, performance: Math.min(finalPerformance, 100) };
             }
 
-            const totalActual = indicatorEntries.reduce((acc, curr) => acc + curr.value, 0);
+            const totalActual = entries.filter(e => e.indicatorId === indicatorId).reduce((acc, curr) => acc + parseValue(curr.value), 0);
             const annualTarget = parseValue(selectedIndicator.targets?.annual);
             const performance = annualTarget > 0 ? (totalActual / annualTarget) * 100 : 0;
-            return { totalActual, target: annualTarget, performance };
+            return { totalActual, target: annualTarget, performance: Math.min(performance, 100) };
         }
 
         return calculateQuarterProgress({
@@ -139,7 +190,7 @@ const ProgressCalculatorView: React.FC<ProgressCalculatorViewProps> = ({ entries
             quarterId: timelineId,
             monthsInQuarter: activeMonths
         });
-    }, [selectedIndicator, indicatorEntries, timelineId, activeMonths, isAnnual, hasSubIndicators, subIndicatorProgress]);
+    }, [selectedIndicator, indicatorEntries, entries, indicatorId, timelineId, activeMonths, isAnnual, hasSubIndicators, subIndicatorProgress]);
 
     const formulaExplanation = useMemo(() => {
         if (!selectedIndicator) return null;

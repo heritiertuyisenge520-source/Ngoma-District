@@ -87,9 +87,6 @@ export const calculateQuarterProgress = ({ indicator, entries, quarterId, months
         }
     }
 
-    // Guard against division by zero
-    if (targetDenominator === 0) targetDenominator = 1;
-
     // 3. Calculate Performance - UPDATED TO MATCH USER REQUIREMENTS
     let performance = 0;
     let subIndicatorDetails: any[] = [];
@@ -185,13 +182,19 @@ export const calculateQuarterProgress = ({ indicator, entries, quarterId, months
             const averageSubPerformance = subIndicatorDetails.reduce((sum, sub) => sum + sub.performance, 0) / subIndicatorDetails.length;
             performance = averageSubPerformance;
         } else {
-            performance = (totalActual / targetDenominator) * 100;
+            // Only calculate performance if targetDenominator > 0
+            if (targetDenominator > 0) {
+                performance = (totalActual / targetDenominator) * 100;
+            }
         }
     } else {
-        performance = (totalActual / targetDenominator) * 100;
-        if (isDecreasing) {
-            // For decreasing indicators, invert the calculation: target / actual
-            performance = totalActual > 0 ? (targetDenominator / totalActual) * 100 : 100;
+        // Only calculate performance if targetDenominator > 0
+        if (targetDenominator > 0) {
+            performance = (totalActual / targetDenominator) * 100;
+            if (isDecreasing) {
+                // For decreasing indicators, invert the calculation: target / actual
+                performance = totalActual > 0 ? (targetDenominator / totalActual) * 100 : 100;
+            }
         }
     }
 

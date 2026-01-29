@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { INDICATORS, PILLARS, QUARTERS, Indicator } from '../data';
 import { MonitoringEntry } from '../types';
-import { calculateQuarterProgress, calculateAnnualProgress, getIndicatorUnit } from '../utils/progressUtils';
+import { calculateQuarterProgress, calculateAnnualProgress, getIndicatorUnit, parseValue } from '../utils/progressUtils';
 import jsPDF from 'jspdf';
 
 interface AnalyticsViewProps {
@@ -87,26 +87,84 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
 
   // Pillar level stats
   const pillarStats = useMemo(() => {
-    const totalIndicatorsAcrossAllPillars = INDICATORS.length;
     return PILLARS.map(pillar => {
       const pillarIndicators = pillar.outputs.flatMap(o => o.indicators || []);
       if (pillarIndicators.length === 0) return { ...pillar, q: 0, a: 0 };
 
       let totalQuarterPerf = 0;
+      const quarterId = selectedQuarter?.id || 'q1';
 
-      pillarIndicators.forEach(indicator => {
+      // Calculate individual indicator performances
+      const indicatorPerformances = pillarIndicators.map(indicator => {
         const indicatorEntries = entriesByIndicator[indicator.id] || [];
         const qResult = calculateQuarterProgress({
           indicator,
           entries: indicatorEntries,
-          quarterId: selectedQuarter?.id || 'q1',
+          quarterId,
           monthsInQuarter: selectedQuarter?.months || []
         });
-        totalQuarterPerf += qResult.performance;
+        return {
+          indicator,
+          performance: qResult.performance,
+          hasTarget: qResult.target > 0
+        };
       });
 
-      const quarterProgress = pillarIndicators.length > 0 ? (totalQuarterPerf / pillarIndicators.length) : 0;
-      const annualProgress = totalIndicatorsAcrossAllPillars > 0 ? (totalQuarterPerf / totalIndicatorsAcrossAllPillars) : 0;
+      totalQuarterPerf = indicatorPerformances.reduce((sum, ind) => sum + ind.performance, 0);
+
+      // Quarterly Pillar Progress: Apply denominator logic based on targets
+      let quarterlyDenominator = 0;
+      if (quarterId === 'q1') {
+        quarterlyDenominator = indicatorPerformances.filter(ind => {
+          const t1 = parseValue(ind.indicator.targets.q1);
+          return t1 > 0;
+        }).length;
+      } else if (quarterId === 'q2') {
+        quarterlyDenominator = indicatorPerformances.filter(ind => {
+          const t1 = parseValue(ind.indicator.targets.q1);
+          const t2 = parseValue(ind.indicator.targets.q2);
+          return (t1 + t2) > 0;
+        }).length;
+      } else if (quarterId === 'q3') {
+        quarterlyDenominator = indicatorPerformances.filter(ind => {
+          const t1 = parseValue(ind.indicator.targets.q1);
+          const t2 = parseValue(ind.indicator.targets.q2);
+          const t3 = parseValue(ind.indicator.targets.q3);
+          return (t1 + t2 + t3) > 0;
+        }).length;
+      } else if (quarterId === 'q4') {
+        quarterlyDenominator = indicatorPerformances.filter(ind => {
+          const t1 = parseValue(ind.indicator.targets.q1);
+          const t2 = parseValue(ind.indicator.targets.q2);
+          const t3 = parseValue(ind.indicator.targets.q3);
+          const t4 = parseValue(ind.indicator.targets.q4);
+          return (t1 + t2 + t3 + t4) > 0;
+        }).length;
+      }
+
+      // Annual Pillar Progress: Always use all indicators in the pillar
+      const annualDenominator = pillarIndicators.length;
+
+      const quarterProgress = quarterlyDenominator > 0 ? (totalQuarterPerf / quarterlyDenominator) : 0;
+      const annualProgress = annualDenominator > 0 ? (totalQuarterPerf / annualDenominator) : 0;
+
+      // DEBUG: Log calculation details for Economic Transformation pillar
+      if (pillar.name === 'Economic Transformation' && quarterId === 'q2') {
+        console.log('=== Economic Transformation Q2 Debug ===');
+        console.log('Total Quarter Performance:', totalQuarterPerf);
+        console.log('Quarterly Denominator:', quarterlyDenominator);
+        console.log('Annual Denominator:', annualDenominator);
+        console.log('Individual Indicators:');
+        indicatorPerformances.forEach((ind, idx) => {
+          const t1 = parseValue(ind.indicator.targets.q1);
+          const t2 = parseValue(ind.indicator.targets.q2);
+          const hasCumulativeTarget = (t1 + t2) > 0;
+          console.log(`  ${idx + 1}. ${ind.indicator.name}: Performance=${ind.performance.toFixed(1)}%, Q1=${t1}, Q2=${t2}, Cumulative=${(t1 + t2)}, Counted=${hasCumulativeTarget}`);
+        });
+        console.log('Quarter Progress Calculation:', `${totalQuarterPerf} / ${quarterlyDenominator} = ${quarterProgress.toFixed(1)}%`);
+        console.log('Annual Progress Calculation:', `${totalQuarterPerf} / ${annualDenominator} = ${annualProgress.toFixed(1)}%`);
+        console.log('================================');
+      }
 
       return {
         ...pillar,
@@ -197,6 +255,43 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
   const annualCompletion = useMemo(() => {
     if (!selectedIndicator) return 0;
     
+    // Handle sub-indicators: calculate average of annual sub-indicator progress
+    if (selectedIndicator.subIndicatorIds) {
+      const allIndicatorEntries = entriesByIndicator[selectedIndicator.id] || [];
+      // Filter entries by selected quarter only (same as quarterly calculation)
+      const quarterEntries = allIndicatorEntries.filter(entry => 
+        entry.quarterId === selectedQuarterId
+      );
+      const subMapping = selectedIndicator.subIndicatorIds;
+      let subAnnualPerformances: number[] = [];
+
+      Object.entries(subMapping).forEach(([key, subId]) => {
+        const subIndicator = INDICATORS.find(i => i.id === subId);
+        if (subIndicator) {
+          // Get entries for this sub-indicator from selected quarter only
+          const subActual = quarterEntries.reduce((acc, curr) => {
+            return acc + (curr.subValues?.[key] || 0);
+          }, 0);
+          
+          const subAnnualTarget = Number(subIndicator.targets.annual);
+          
+          if (subAnnualTarget > 0) {
+            let subPerf = (subActual / subAnnualTarget) * 100;
+            if (subIndicator.measurementType === 'decreasing') {
+              subPerf = subActual > 0 ? (subAnnualTarget / subActual) * 100 : 100;
+            }
+            subAnnualPerformances.push(Math.min(subPerf, 100));
+          }
+        }
+      });
+
+      if (subAnnualPerformances.length > 0) {
+        // Return average of sub-indicator annual performances
+        return subAnnualPerformances.reduce((a, b) => a + b, 0) / subAnnualPerformances.length;
+      }
+    }
+    
+    // Regular indicator (non-sub-indicator) logic
     // Get entries for the selected quarter only (not cumulative)
     const allIndicatorEntries = entriesByIndicator[selectedIndicator.id] || [];
     const quarterEntries = allIndicatorEntries.filter(entry => 
@@ -874,14 +969,14 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
                     // Parent indicator with sub-indicators - show average info instead of target
                     <div className="flex justify-between items-center p-2 bg-blue-50 rounded-lg">
                       <span className="text-xs text-blue-600 font-medium">Average of Sub-indicators</span>
-                      <span className="text-sm font-bold text-blue-700">{Math.round(quarterStats.performance)}%</span>
+                      <span className="text-sm font-bold text-blue-700">{Math.round(annualCompletion)}%</span>
                     </div>
                   ) : (
                     // Regular indicator - show target and actual
                     <>
                       <div className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
                         <span className="text-xs text-slate-500">Target</span>
-                        <span className="text-sm font-bold text-slate-700">{quarterStats.target.toLocaleString()}</span>
+                        <span className="text-sm font-bold text-slate-700">{Number(selectedIndicator.targets.annual).toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
                         <span className="text-xs text-slate-500">Actual</span>
