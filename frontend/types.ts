@@ -52,4 +52,5 @@ export interface MonitoringEntry {
   comments: string;
   submittedBy?: string;
   timestamp: string;
+  isNotApplicable?: boolean; // N/A flag for 0/0 submissions
 }

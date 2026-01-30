@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { PILLARS } from '../data';
 import { API_ENDPOINTS, getAssignedIndicatorsUrl, getUnassignIndicatorUrl } from '../config/api';
+import { authFetch, authGet, authPost, authDelete } from '../utils/authFetch';
 
 interface User {
     _id: string;
@@ -55,11 +56,17 @@ const AssignIndicatorsView: React.FC<AssignIndicatorsViewProps> = ({ user }) => 
 
     const fetchTeamMembers = async () => {
         try {
-            const response = await fetch(`${API_ENDPOINTS.APPROVED_USERS}?unit=${encodeURIComponent(user.unit || '')}`);
+            const response = await authGet(`${API_ENDPOINTS.APPROVED_USERS}?unit=${encodeURIComponent(user.unit || '')}`);
             if (response.ok) {
                 const data = await response.json();
                 // Filter to show only employees in the same unit (not heads)
-                setTeamMembers(data.filter((u: User) => u.userType === 'employee' && u.email !== user.email));
+                const employees = data.filter((u: User) => u.userType === 'employee' && u.email !== user.email);
+                setTeamMembers(employees);
+                console.log('Team members fetched:', employees.length, employees);
+            } else {
+                console.error('Failed to fetch team members:', response.status, response.statusText);
+                const errorData = await response.json().catch(() => ({}));
+                console.error('Error details:', errorData);
             }
         } catch (error) {
             console.error('Error fetching team members:', error);
@@ -69,10 +76,12 @@ const AssignIndicatorsView: React.FC<AssignIndicatorsViewProps> = ({ user }) => 
     const fetchAssignments = async () => {
         try {
             if (!user.unit) return;
-            const response = await fetch(`${API_ENDPOINTS.UNIT_ASSIGNMENTS}/${encodeURIComponent(user.unit)}`);
+            const response = await authGet(`${API_ENDPOINTS.UNIT_ASSIGNMENTS}/${encodeURIComponent(user.unit)}`);
             if (response.ok) {
                 const data = await response.json();
                 setAssignments(data);
+            } else {
+                console.error('Failed to fetch assignments:', response.status, response.statusText);
             }
         } catch (error) {
             console.error('Error fetching assignments:', error);
@@ -94,31 +103,45 @@ const AssignIndicatorsView: React.FC<AssignIndicatorsViewProps> = ({ user }) => 
             return;
         }
 
-        const targetUser = teamMembers.find(m => m._id === selectedUser);
+        console.log('Assigning indicator:', {
+            selectedUser,
+            selectedPillar,
+            selectedIndicator,
+            teamMembers: teamMembers.length,
+            indicators: indicators.length
+        });
+
+        const targetUser = teamMembers.find(m => m._id === selectedUser || m.email === selectedUser);
         const indicator = indicators.find(i => i.id === selectedIndicator);
 
-        if (!targetUser || !indicator) {
-            alert('Invalid selection');
+        if (!targetUser) {
+            console.error('Target user not found:', selectedUser, teamMembers);
+            alert(`User not found. Please refresh and try again.`);
             return;
         }
 
+        if (!indicator) {
+            console.error('Indicator not found:', selectedIndicator, indicators);
+            alert('Indicator not found. Please select again.');
+            return;
+        }
+
+        console.log('Target user found:', targetUser);
+        console.log('Indicator found:', indicator);
+
         try {
             setIsAssigning(true);
-            const response = await fetch(API_ENDPOINTS.ASSIGN_INDICATOR, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: targetUser._id,
-                    userEmail: targetUser.email,
-                    userName: targetUser.name,
-                    pillarId: selectedPillar,
-                    pillarName: selectedPillar,
-                    indicatorId: selectedIndicator,
-                    indicatorName: indicator.name,
-                    assignedBy: user.name,
-                    assignedByEmail: user.email,
-                    unit: user.unit
-                })
+            const response = await authPost(API_ENDPOINTS.ASSIGN_INDICATOR, {
+                userId: targetUser._id,
+                userEmail: targetUser.email,
+                userName: targetUser.name,
+                pillarId: selectedPillar,
+                pillarName: selectedPillar,
+                indicatorId: selectedIndicator,
+                indicatorName: indicator.name,
+                assignedBy: user.name,
+                assignedByEmail: user.email,
+                unit: user.unit
             });
 
             if (response.ok) {
@@ -143,9 +166,7 @@ const AssignIndicatorsView: React.FC<AssignIndicatorsViewProps> = ({ user }) => 
         }
 
         try {
-            const response = await fetch(getUnassignIndicatorUrl(assignmentId), {
-                method: 'DELETE'
-            });
+            const response = await authDelete(getUnassignIndicatorUrl(assignmentId));
 
             if (response.ok) {
                 alert('Assignment removed');
@@ -194,19 +215,33 @@ const AssignIndicatorsView: React.FC<AssignIndicatorsViewProps> = ({ user }) => 
                             </label>
                             <select
                                 value={selectedUser}
-                                onChange={(e) => setSelectedUser(e.target.value)}
+                                onChange={(e) => {
+                                    console.log('User selected:', e.target.value);
+                                    setSelectedUser(e.target.value);
+                                }}
                                 className={inputClasses}
+                                disabled={isLoading || teamMembers.length === 0}
                             >
                                 <option value="">-- Select User --</option>
                                 {teamMembers.map(member => (
                                     <option key={member._id} value={member._id}>
-                                        {member.name} ({member.role})
+                                        {member.name} ({member.role || member.email})
                                     </option>
                                 ))}
                             </select>
+                            {isLoading && (
+                                <p className="text-xs text-blue-600 font-medium mt-1">
+                                    Loading team members...
+                                </p>
+                            )}
                             {teamMembers.length === 0 && !isLoading && (
                                 <p className="text-xs text-amber-600 font-medium mt-1">
                                     No team members found in your unit. They need to be approved first.
+                                </p>
+                            )}
+                            {teamMembers.length > 0 && selectedUser && (
+                                <p className="text-xs text-green-600 font-medium mt-1">
+                                    Selected: {teamMembers.find(m => m._id === selectedUser)?.name || 'Unknown'}
                                 </p>
                             )}
                         </div>

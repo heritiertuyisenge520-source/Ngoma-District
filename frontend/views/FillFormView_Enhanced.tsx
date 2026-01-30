@@ -61,6 +61,7 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [isEditing, setIsEditing] = useState(!!initialEntry);
+  const [isNotApplicable, setIsNotApplicable] = useState(false);
 
   // NEW: System status state
   const [systemStatus, setSystemStatus] = useState({
@@ -128,6 +129,34 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
     }));
   };
 
+  const handleNotApplicableChange = (checked: boolean) => {
+    console.log('🔍 N/A Checkbox Debug:', {
+      checked,
+      currentValue: value,
+      currentTargetValue: targetValue,
+      currentSubValues: subValues
+    });
+    
+    setIsNotApplicable(checked);
+    if (checked) {
+      // When N/A is checked, set both values to 0
+      setValue('0');
+      setTargetValue('0');
+      // Also set all sub-values to 0 if they exist
+      const resetSubValues: Record<string, string> = {};
+      Object.keys(subValues).forEach(key => {
+        resetSubValues[key] = '0';
+      });
+      setSubValues(resetSubValues);
+      
+      console.log('✅ N/A Applied - Values set to 0:', {
+        newValue: '0',
+        newTargetValue: '0',
+        newSubValues: resetSubValues
+      });
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -156,8 +185,9 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
         pillarName: selectedPillarData?.name || '',
         indicatorName: selectedIndicatorData?.name || '',
         subValues: Object.fromEntries(
-          Object.entries(subValues).map(([k, v]) => [k, parseFloat(v) || 0])
-        )
+          Object.entries(subValues).map(([k, v]: [string, string]) => [k, parseFloat(v) || 0] as [string, number])
+        ),
+        isNotApplicable // Add the N/A flag to the submission
       };
 
       const response = await authPost(API_ENDPOINTS.SUBMISSIONS, entryData);
@@ -189,6 +219,7 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
     setTargetValue('');
     setComments('');
     setSubValues({});
+    setIsNotApplicable(false); // Reset N/A checkbox
     setIsEditing(false);
     setErrorMessage('');
     if (onCancelEdit) onCancelEdit();
@@ -460,12 +491,58 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
               </div>
             )}
 
+            {/* N/A Checkbox - Show as soon as indicator is selected */}
+            {(() => {
+              console.log('🔍 N/A Checkbox Rendering Debug:', {
+                selectedIndicator,
+                quarterId,
+                month,
+                shouldShow: !!selectedIndicator
+              });
+              return selectedIndicator;
+            })() && (
+              <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-4 shadow-md mb-6">
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    checked={isNotApplicable}
+                    onChange={(e) => handleNotApplicableChange(e.target.checked)}
+                    className="w-6 h-6 text-amber-600 border-2 border-amber-400 rounded focus:ring-4 focus:ring-amber-500 focus:ring-offset-2"
+                  />
+                  <div className="flex-1">
+                    <span className="font-bold text-amber-900 text-lg">🚫 N/A - Not Applicable (0/0 Progress)</span>
+                    <p className="text-sm text-amber-800 mt-2 font-medium">
+                      Use this ONLY when both numerator and denominator are 0. This will automatically calculate 0% progress.
+                    </p>
+                    <p className="text-xs text-amber-700 mt-1">
+                      Perfect for indicators with no activity during this period.
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Show calculated progress when N/A is checked */}
+                {isNotApplicable && (
+                  <div className="mt-4 bg-amber-100 rounded-lg p-4 border-2 border-amber-400">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold text-amber-900">✅ Auto-Calculated Progress:</span>
+                      <span className="text-2xl font-black text-amber-600">0%</span>
+                    </div>
+                    <div className="text-sm text-amber-800 mt-2 font-medium">
+                      Numerator: 0 ÷ Denominator: 0 = 0% (N/A Status)
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Value Input */}
             {selectedIndicator && quarterId && month && (
               <div>
                 {selectedIndicatorData?.subIndicatorIds && Object.keys(selectedIndicatorData.subIndicatorIds).length > 0 ? (
                   <div className="space-y-4">
-                    <h4 className="font-bold text-slate-700">Sub-Indicator Values</h4>
+                    <h4 className="font-bold text-slate-700">
+                      Sub-Indicator Values {isNotApplicable && <span className="text-blue-600">(Auto-set to 0)</span>}
+                    </h4>
                     {Object.entries(selectedIndicatorData.subIndicatorIds).map(([shortName, subIndicatorId]) => {
                       const subIndicator = INDICATORS.find(i => i.id === subIndicatorId);
                       return (
@@ -477,9 +554,10 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                             type="number"
                             value={subValues[subIndicatorId] || ''}
                             onChange={(e) => handleSubValueChange(subIndicatorId, e.target.value)}
-                            className="w-full p-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
+                            className="w-full p-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none disabled:bg-slate-100 disabled:text-slate-500"
                             placeholder="Enter value"
                             required
+                            disabled={isNotApplicable}
                           />
                         </div>
                       );
@@ -487,14 +565,17 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                   </div>
                 ) : (
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Achieved Value</label>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">
+                      Achieved Value {isNotApplicable && <span className="text-blue-600">(Auto-set to 0)</span>}
+                    </label>
                     <input
                       type="number"
                       value={value}
                       onChange={(e) => setValue(e.target.value)}
-                      className="w-full p-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
+                      className="w-full p-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none disabled:bg-slate-100 disabled:text-slate-500"
                       placeholder="Enter achieved value"
                       required
+                      disabled={isNotApplicable}
                     />
                   </div>
                 )}
@@ -504,13 +585,16 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
             {/* Target Value */}
             {selectedIndicator && quarterId && month && (
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Target Value</label>
+                <label className="block text-sm font-bold text-slate-700 mb-2">
+                  Target Value {isNotApplicable && <span className="text-blue-600">(Auto-set to 0)</span>}
+                </label>
                 <input
                   type="number"
                   value={targetValue}
                   onChange={(e) => setTargetValue(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
+                  className="w-full p-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none disabled:bg-slate-100 disabled:text-slate-500"
                   placeholder="Enter target value"
+                  disabled={isNotApplicable}
                 />
               </div>
             )}

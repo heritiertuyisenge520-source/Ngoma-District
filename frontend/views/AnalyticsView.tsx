@@ -103,50 +103,52 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
           quarterId,
           monthsInQuarter: selectedQuarter?.months || []
         });
+        
+        // Determine if indicator has target for this quarter
+        let hasTarget = false;
+        if (quarterId === 'q1') {
+          const t1 = parseValue(indicator.targets.q1);
+          hasTarget = t1 > 0;
+        } else if (quarterId === 'q2') {
+          const t1 = parseValue(indicator.targets.q1);
+          const t2 = parseValue(indicator.targets.q2);
+          hasTarget = (t1 + t2) > 0;
+        } else if (quarterId === 'q3') {
+          const t1 = parseValue(indicator.targets.q1);
+          const t2 = parseValue(indicator.targets.q2);
+          const t3 = parseValue(indicator.targets.q3);
+          hasTarget = (t1 + t2 + t3) > 0;
+        } else if (quarterId === 'q4') {
+          const t1 = parseValue(indicator.targets.q1);
+          const t2 = parseValue(indicator.targets.q2);
+          const t3 = parseValue(indicator.targets.q3);
+          const t4 = parseValue(indicator.targets.q4);
+          hasTarget = (t1 + t2 + t3 + t4) > 0;
+        }
+        
         return {
           indicator,
           performance: qResult.performance,
-          hasTarget: qResult.target > 0
+          hasTarget: hasTarget
         };
       });
 
-      totalQuarterPerf = indicatorPerformances.reduce((sum, ind) => sum + ind.performance, 0);
+      // Filter indicators with targets for this quarter
+      const indicatorsWithTargets = indicatorPerformances.filter(ind => ind.hasTarget);
+      
+      // Sum only the performances of indicators that HAVE targets for this quarter
+      totalQuarterPerf = indicatorsWithTargets.reduce((sum, ind) => sum + ind.performance, 0);
 
-      // Quarterly Pillar Progress: Apply denominator logic based on targets
-      let quarterlyDenominator = 0;
-      if (quarterId === 'q1') {
-        quarterlyDenominator = indicatorPerformances.filter(ind => {
-          const t1 = parseValue(ind.indicator.targets.q1);
-          return t1 > 0;
-        }).length;
-      } else if (quarterId === 'q2') {
-        quarterlyDenominator = indicatorPerformances.filter(ind => {
-          const t1 = parseValue(ind.indicator.targets.q1);
-          const t2 = parseValue(ind.indicator.targets.q2);
-          return (t1 + t2) > 0;
-        }).length;
-      } else if (quarterId === 'q3') {
-        quarterlyDenominator = indicatorPerformances.filter(ind => {
-          const t1 = parseValue(ind.indicator.targets.q1);
-          const t2 = parseValue(ind.indicator.targets.q2);
-          const t3 = parseValue(ind.indicator.targets.q3);
-          return (t1 + t2 + t3) > 0;
-        }).length;
-      } else if (quarterId === 'q4') {
-        quarterlyDenominator = indicatorPerformances.filter(ind => {
-          const t1 = parseValue(ind.indicator.targets.q1);
-          const t2 = parseValue(ind.indicator.targets.q2);
-          const t3 = parseValue(ind.indicator.targets.q3);
-          const t4 = parseValue(ind.indicator.targets.q4);
-          return (t1 + t2 + t3 + t4) > 0;
-        }).length;
-      }
+      // Quarterly Pillar Progress: Count only indicators with targets
+      const quarterlyDenominator = indicatorsWithTargets.length;
 
-      // Annual Pillar Progress: Always use all indicators in the pillar
+      // Annual Pillar Progress: Sum of ALL indicator progress / ALL indicators
+      // According to formula: Sum of Q2 progress / number of All indicators
+      const totalAnnualPerf = indicatorPerformances.reduce((sum, ind) => sum + ind.performance, 0);
       const annualDenominator = pillarIndicators.length;
 
       const quarterProgress = quarterlyDenominator > 0 ? (totalQuarterPerf / quarterlyDenominator) : 0;
-      const annualProgress = annualDenominator > 0 ? (totalQuarterPerf / annualDenominator) : 0;
+      const annualProgress = annualDenominator > 0 ? (totalAnnualPerf / annualDenominator) : 0;
 
       // DEBUG: Log calculation details for Economic Transformation pillar
       if (pillar.name === 'Economic Transformation' && quarterId === 'q2') {

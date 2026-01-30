@@ -16,6 +16,19 @@ interface CalculationContext {
 }
 
 export const calculateQuarterProgress = ({ indicator, entries, quarterId, monthsInQuarter }: CalculationContext) => {
+    // Check if any entry in this quarter has isNotApplicable flag
+    const hasNotApplicableEntry = entries.some(e => e.isNotApplicable);
+    if (hasNotApplicableEntry) {
+        return {
+            totalActual: 0,
+            target: 0,
+            performance: 0,
+            trend: 'on-track' as const,
+            nextTarget: 0,
+            subIndicatorDetails: []
+        };
+    }
+
     const isPercentage = indicator.measurementType === 'percentage';
     const isDecreasing = indicator.measurementType === 'decreasing';
     const isCumulative = !isPercentage && !isDecreasing; // Default to cumulative if not specified
@@ -359,6 +372,12 @@ export const calculateQuarterProgress = ({ indicator, entries, quarterId, months
 export const calculateAnnualProgress = (indicator: Indicator, entries: any[]) => {
     // Collect all entries for the indicator
     const indicatorEntries = entries.filter(e => e.indicatorId === indicator.id);
+    
+    // Check if any entry has isNotApplicable flag
+    const hasNotApplicableEntry = indicatorEntries.some(e => e.isNotApplicable);
+    if (hasNotApplicableEntry) {
+        return 0;
+    }
 
     // Legacy key mapping for backwards compatibility with old database data
     const legacyKeyMap: Record<string, string[]> = {
@@ -435,6 +454,11 @@ export const calculateAnnualProgress = (indicator: Indicator, entries: any[]) =>
 };
 
 export const calculateMonthlyProgress = (indicator: Indicator, value: number, month: string, itemEntries?: any[]) => {
+    // Check if any entry has isNotApplicable flag
+    if (itemEntries && itemEntries.some(e => e.isNotApplicable)) {
+        return 0;
+    }
+
     const isPercentage = indicator.measurementType === 'percentage';
     const isDecreasing = indicator.measurementType === 'decreasing';
     const isStandardCumulative = !isPercentage && !isDecreasing && !indicator.subIndicatorIds;

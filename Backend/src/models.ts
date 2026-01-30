@@ -220,6 +220,7 @@ const SubmissionSchema = new Schema({
     targetValue: { type: Number },
     subValues: { type: Schema.Types.Mixed }, // For dual indicators
     comments: { type: String },
+    isNotApplicable: { type: Boolean, default: false }, // N/A flag for 0/0 submissions
     supportingDocuments: [{
         url: { type: String },
         publicId: { type: String },

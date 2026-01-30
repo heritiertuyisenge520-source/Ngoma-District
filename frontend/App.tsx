@@ -18,6 +18,8 @@ import DataChangeRequestsView from './views/DataChangeRequestsView';
 import MonitorSubmitView from './views/MonitorSubmitView';
 import ManageUsersView from './views/ManageUsersView';
 import IndicatorProgressView from './views/IndicatorProgressView';
+import IndicatorReports from './components/IndicatorReports';
+import PillarProgressView from './views/PillarProgressView';
 import ErrorBoundary from './components/ErrorBoundary';
 import { MonitoringEntry } from './types';
 import { API_ENDPOINTS, getAssignedIndicatorsUrl } from './config/api';
@@ -356,6 +358,8 @@ const App: React.FC = () => {
         <main className="flex-1 min-w-0 overflow-y-auto p-4 md:p-6">
           <div className="w-full h-full">
             {activeView === 'analytics' && <AnalyticsView entries={entries} userType={user.userType} />}
+            {activeView === 'pillar-progress' && <PillarProgressView entries={entries} user={user} />}
+            {activeView === 'indicator-reports' && <IndicatorReports entries={entries} />}
             {activeView === 'fill' && (
               <ErrorBoundary>
                 <FillFormView
