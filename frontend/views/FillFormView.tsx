@@ -622,7 +622,29 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
 
   };
 
-
+  // Reset form to initial state
+  const resetForm = () => {
+    setPillarName('');
+    setIndicatorId('');
+    setQuarterId('');
+    setMonth('');
+    setTargetValue('');
+    setAchievementValue('');
+    setComments('');
+    setSubValues({});
+    setIsNotApplicable(false);
+    setSupportingDocuments([]);
+    setShowDuplicateModal(false);
+    setExistingSubmission(null);
+    setSelectedAction(null);
+    setModalEditMode(false);
+    setModalValue('');
+    setModalComments('');
+    setModalSubValues({});
+    if (onCancelEdit) {
+      onCancelEdit();
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
 
@@ -708,50 +730,6 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
 
       numericSubValues['achieved_pop_percentage'] = finalValue;
 
-      const handleRemoveDocument = (index: number) => {
-
-        setSupportingDocuments(prev => prev.filter((_, i) => i !== index));
-
-      };
-
-
-
-      // Check for duplicate submission
-
-      const checkDuplicateSubmission = async (pillarId: string, indicatorId: string, quarterId: string, month: string) => {
-
-        try {
-
-          const response = await authPost(`${API_ENDPOINTS.SUBMISSIONS}/check-duplicate`, {
-
-            pillarId,
-
-            indicatorId,
-
-            quarterId,
-
-            month
-
-          });
-
-
-
-          if (response.ok) {
-
-            const data = await response.json();
-
-            return data;
-
-          }
-
-        } catch (error) {
-          console.error('Error checking duplicate submission:', error);
-          return { hasDuplicate: false };
-        }
-      };
-
-      // This function is defined but not used in this context
-      // It should be removed or moved to the correct scope
     }
 
     // Build the payload
