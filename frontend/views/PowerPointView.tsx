@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { PILLARS, QUARTERS, INDICATORS } from '../data';
 import { MonitoringEntry } from '../types';
 import { calculateQuarterProgress } from '../utils/progressUtils';
+import { formatDate } from '../utils/dateUtils';
 import jsPDF from 'jspdf';
 
 interface GraphData {
@@ -347,7 +348,7 @@ const PowerPointView: React.FC<PowerPointViewProps> = ({ entries }) => {
             pdf.text(presenterInfo.title, pageWidth / 2, pageHeight * 0.70, { align: 'center' });
           }
           pdf.setFontSize(10);
-          pdf.text(`Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, pageWidth / 2, pageHeight * 0.85, { align: 'center' });
+          pdf.text(`Generated: ${formatDate(new Date())}`, pageWidth / 2, pageHeight * 0.85, { align: 'center' });
         } else {
           pdf.setFillColor(59, 130, 246);
           pdf.rect(0, 0, pageWidth, 25, 'F');

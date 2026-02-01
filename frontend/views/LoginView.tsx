@@ -367,7 +367,9 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                         NGOMA DISTRICT
                     </h1>
                     <p className="text-blue-400 font-bold text-sm tracking-wider uppercase">
-                        Imihigo Tracking Tool
+                        <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400 bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient">
+                            Imihigo
+                        </span> Tracking Tool
                     </p>
                 </div>
 

@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { PILLARS, QUARTERS, INDICATORS, Indicator } from '../data';
 import { MonitoringEntry } from '../types';
 import { calculateMonthlyProgress, calculateAnnualProgress, parseValue } from '../utils/progressUtils';
+import { formatDate } from '../utils/dateUtils';
 import jsPDF from 'jspdf';
 
 interface PillarProgressViewProps {
@@ -364,7 +365,6 @@ const PillarProgressView: React.FC<PillarProgressViewProps> = ({ entries, user }
       'Annual Progress (%)',
       'Annual Actual',
       'Annual Target',
-      'Status',
       'Sub-Indicator Name',
       'Sub-Indicator Monthly Progress (%)',
       'Sub-Indicator Monthly Actual',
@@ -388,7 +388,6 @@ const PillarProgressView: React.FC<PillarProgressViewProps> = ({ entries, user }
         row.annualProgress.toFixed(2),
         row.annualActual,
         row.annualTarget,
-        row.status,
         '', '', '', '', '', '', ''
       ];
       rows.push(parentRow.join(','));
@@ -452,7 +451,7 @@ const PillarProgressView: React.FC<PillarProgressViewProps> = ({ entries, user }
       pdf.text(`${selectedMonth} - ${QUARTERS.find(q => q.id === selectedQuarterId)?.name || ''}`, pageWidth / 2, 42, { align: 'center' });
 
       pdf.setFontSize(9);
-      pdf.text(`Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, pageWidth / 2, 48, { align: 'center' });
+      pdf.text(`Generated: ${formatDate(new Date())}`, pageWidth / 2, 48, { align: 'center' });
 
       yPos = 60;
 
@@ -464,10 +463,6 @@ const PillarProgressView: React.FC<PillarProgressViewProps> = ({ entries, user }
       yPos += 8;
 
       const totalIndicators = indicatorsWithProgress.length;
-      const completedIndicators = indicatorsWithProgress.filter(r => r.status === 'completed').length;
-      const onTrackIndicators = indicatorsWithProgress.filter(r => r.status === 'on-track').length;
-      const behindIndicators = indicatorsWithProgress.filter(r => r.status === 'behind').length;
-      const notStartedIndicators = indicatorsWithProgress.filter(r => r.status === 'not-started').length;
       const avgMonthlyProgress = indicatorsWithProgress.reduce((sum, r) => sum + r.monthlyProgress, 0) / totalIndicators;
       const avgAnnualProgress = indicatorsWithProgress.reduce((sum, r) => sum + r.annualProgress, 0) / totalIndicators;
 
@@ -478,15 +473,6 @@ const PillarProgressView: React.FC<PillarProgressViewProps> = ({ entries, user }
       pdf.text(`Average Monthly Progress: ${avgMonthlyProgress.toFixed(1)}%`, 100, yPos);
       yPos += 6;
       pdf.text(`Average Annual Progress: ${avgAnnualProgress.toFixed(1)}%`, 15, yPos);
-      yPos += 6;
-      pdf.setTextColor(16, 185, 129);
-      pdf.text(`Completed: ${completedIndicators}`, 15, yPos);
-      pdf.setTextColor(59, 130, 246);
-      pdf.text(`On Track: ${onTrackIndicators}`, 60, yPos);
-      pdf.setTextColor(245, 158, 11);
-      pdf.text(`Behind: ${behindIndicators}`, 100, yPos);
-      pdf.setTextColor(148, 163, 184);
-      pdf.text(`Not Started: ${notStartedIndicators}`, 140, yPos);
       yPos += 15;
 
       // Progress Chart
@@ -515,12 +501,12 @@ const PillarProgressView: React.FC<PillarProgressViewProps> = ({ entries, user }
         const barY = chartY + (idx * barHeight);
         const barWidth = (indicator.monthlyProgress / 100) * (chartWidth - 60);
         
-        // Bar color based on status
-        if (indicator.status === 'completed') {
+        // Bar color based on progress
+        if (indicator.annualProgress >= 100) {
           pdf.setFillColor(16, 185, 129);
-        } else if (indicator.status === 'on-track') {
+        } else if (indicator.annualProgress >= 75) {
           pdf.setFillColor(59, 130, 246);
-        } else if (indicator.status === 'behind') {
+        } else if (indicator.annualProgress > 0) {
           pdf.setFillColor(245, 158, 11);
         } else {
           pdf.setFillColor(148, 163, 184);
@@ -589,17 +575,7 @@ const PillarProgressView: React.FC<PillarProgressViewProps> = ({ entries, user }
         pdf.text(`${row.annualProgress.toFixed(1)}%`, 70, yPos + 5);
         pdf.text(`${row.annualActual.toLocaleString()} / ${row.annualTarget.toLocaleString()}`, 90, yPos + 5);
 
-        pdf.setFont('helvetica', 'normal');
-        pdf.setTextColor(100, 116, 139);
-        pdf.text('Status:', 20, yPos + 10);
-        pdf.setFont('helvetica', 'bold');
-        const statusColor = row.status === 'completed' ? [16, 185, 129] :
-                           row.status === 'on-track' ? [59, 130, 246] :
-                           row.status === 'behind' ? [245, 158, 11] : [148, 163, 184];
-        pdf.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
-        pdf.text(row.status.toUpperCase().replace('-', ' '), 70, yPos + 10);
-
-        yPos += 15;
+        yPos += 10;
 
         // Sub-indicators if they exist
         if (row.hasSubIndicators && row.subIndicators.length > 0) {
@@ -763,10 +739,10 @@ const PillarProgressView: React.FC<PillarProgressViewProps> = ({ entries, user }
               <table className="w-full">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest font-sans">
                       #
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest font-sans">
                       Indicator Name
                     </th>
                     <th className="px-6 py-4 text-center text-xs font-bold text-slate-600 uppercase tracking-wider">
@@ -774,9 +750,6 @@ const PillarProgressView: React.FC<PillarProgressViewProps> = ({ entries, user }
                     </th>
                     <th className="px-6 py-4 text-center text-xs font-bold text-slate-600 uppercase tracking-wider">
                       Annual Progress
-                    </th>
-                    <th className="px-6 py-4 text-center text-xs font-bold text-slate-600 uppercase tracking-wider">
-                      Status
                     </th>
                   </tr>
                 </thead>
@@ -799,24 +772,24 @@ const PillarProgressView: React.FC<PillarProgressViewProps> = ({ entries, user }
                           }
                         }}
                       >
-                        <td className="px-6 py-4 text-sm font-semibold text-slate-900">
+                        <td className="px-4 py-3 text-xs font-semibold text-slate-900 font-sans">
                           {row.indicatorNumber}
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 py-3">
                           <div className="flex items-center space-x-2">
                             <div className="flex-1">
-                              <div className="text-sm font-medium text-slate-900">
+                              <div className="text-xs font-medium text-slate-900 font-sans leading-tight">
                                 {row.indicatorName}
                               </div>
                               {row.hasSubIndicators && (
-                                <span className="text-xs text-slate-500 mt-1 block">
-                                  (Composite Indicator - {row.subIndicators.length} sub-indicators)
+                                <span className="text-[10px] text-slate-400 mt-0.5 block font-sans">
+                                  (Composite - {row.subIndicators.length} sub-indicators)
                                 </span>
                               )}
                             </div>
                             {row.hasSubIndicators && (
                               <svg 
-                                className={`w-4 h-4 text-slate-400 transition-transform ${expandedIndicators.has(row.indicatorId) ? 'rotate-90' : ''}`}
+                                className={`w-3 h-3 text-slate-400 transition-transform ${expandedIndicators.has(row.indicatorId) ? 'rotate-90' : ''}`}
                                 fill="none" 
                                 stroke="currentColor" 
                                 viewBox="0 0 24 24"
@@ -826,92 +799,82 @@ const PillarProgressView: React.FC<PillarProgressViewProps> = ({ entries, user }
                             )}
                           </div>
                         </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col items-center space-y-1">
-                          <div className="w-full max-w-[120px] bg-slate-200 rounded-full h-2.5">
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col items-center space-y-0.5">
+                          <div className="w-full max-w-[100px] bg-slate-200 rounded-full h-2">
                             <div
-                              className={`h-2.5 rounded-full transition-all ${getProgressColor(row.monthlyProgress)}`}
+                              className={`h-2 rounded-full transition-all ${getProgressColor(row.monthlyProgress)}`}
                               style={{ width: `${Math.min(row.monthlyProgress, 100)}%` }}
                             />
                           </div>
-                          <span className={`text-sm font-bold ${getProgressColor(row.monthlyProgress).replace('bg-', 'text-')}`}>
+                          <span className={`text-xs font-bold font-sans ${getProgressColor(row.monthlyProgress).replace('bg-', 'text-')}`}>
                             {row.monthlyProgress.toFixed(1)}%
                           </span>
-                          <span className="text-xs text-slate-500">
+                          <span className="text-[10px] text-slate-400 font-sans">
                             {row.monthlyActual.toLocaleString()} / {row.monthlyTarget.toLocaleString()}
                           </span>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col items-center space-y-1">
-                          <div className="w-full max-w-[120px] bg-slate-200 rounded-full h-2.5">
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col items-center space-y-0.5">
+                          <div className="w-full max-w-[100px] bg-slate-200 rounded-full h-2">
                             <div
-                              className={`h-2.5 rounded-full transition-all ${getProgressColor(row.annualProgress)}`}
+                              className={`h-2 rounded-full transition-all ${getProgressColor(row.annualProgress)}`}
                               style={{ width: `${Math.min(row.annualProgress, 100)}%` }}
                             />
                           </div>
-                          <span className={`text-sm font-bold ${getProgressColor(row.annualProgress).replace('bg-', 'text-')}`}>
+                          <span className={`text-xs font-bold font-sans ${getProgressColor(row.annualProgress).replace('bg-', 'text-')}`}>
                             {row.annualProgress.toFixed(1)}%
                           </span>
-                          <span className="text-xs text-slate-500">
+                          <span className="text-[10px] text-slate-400 font-sans">
                             {row.annualActual.toLocaleString()} / {row.annualTarget.toLocaleString()}
                           </span>
                         </div>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(row.status)}`}>
-                          {row.status.replace('-', ' ').toUpperCase()}
-                        </span>
                       </td>
                     </tr>
                     {/* Sub-indicator rows */}
                     {row.hasSubIndicators && expandedIndicators.has(row.indicatorId) && row.subIndicators.map((sub, subIdx) => (
                       <tr key={`${row.indicatorId}-${sub.id}`} className="bg-slate-50/50 hover:bg-slate-100 transition-colors">
-                        <td className="px-6 py-3 text-sm text-slate-600">
-                          <span className="ml-6 text-xs">•</span>
+                        <td className="px-4 py-2 text-xs text-slate-500 font-sans">
+                          <span className="ml-6 text-[10px]">•</span>
                         </td>
-                        <td className="px-6 py-3">
-                          <div className="text-sm font-medium text-slate-700 ml-6">
+                        <td className="px-4 py-2">
+                          <div className="text-xs font-medium text-slate-700 ml-6 font-sans leading-tight">
                             {sub.name}
-                            <span className="text-xs text-slate-500 ml-2">(Sub-indicator)</span>
+                            <span className="text-[10px] text-slate-400 ml-1.5">(Sub)</span>
                           </div>
                         </td>
-                        <td className="px-6 py-3">
-                          <div className="flex flex-col items-center space-y-1">
-                            <div className="w-full max-w-[120px] bg-slate-200 rounded-full h-2.5">
+                        <td className="px-4 py-2">
+                          <div className="flex flex-col items-center space-y-0.5">
+                            <div className="w-full max-w-[100px] bg-slate-200 rounded-full h-2">
                               <div
-                                className={`h-2.5 rounded-full transition-all ${getProgressColor(sub.monthlyProgress)}`}
+                                className={`h-2 rounded-full transition-all ${getProgressColor(sub.monthlyProgress)}`}
                                 style={{ width: `${Math.min(sub.monthlyProgress, 100)}%` }}
                               />
                             </div>
-                            <span className={`text-sm font-bold ${getProgressColor(sub.monthlyProgress).replace('bg-', 'text-')}`}>
+                            <span className={`text-xs font-bold font-sans ${getProgressColor(sub.monthlyProgress).replace('bg-', 'text-')}`}>
                               {sub.monthlyProgress.toFixed(1)}%
                             </span>
-                            <span className="text-xs text-slate-500">
+                            <span className="text-[10px] text-slate-400 font-sans">
                               {sub.monthlyActual.toLocaleString()} / {sub.monthlyTarget.toLocaleString()}
                             </span>
                           </div>
                         </td>
-                        <td className="px-6 py-3">
-                          <div className="flex flex-col items-center space-y-1">
-                            <div className="w-full max-w-[120px] bg-slate-200 rounded-full h-2.5">
+                        <td className="px-4 py-2">
+                          <div className="flex flex-col items-center space-y-0.5">
+                            <div className="w-full max-w-[100px] bg-slate-200 rounded-full h-2">
                               <div
-                                className={`h-2.5 rounded-full transition-all ${getProgressColor(sub.annualProgress)}`}
+                                className={`h-2 rounded-full transition-all ${getProgressColor(sub.annualProgress)}`}
                                 style={{ width: `${Math.min(sub.annualProgress, 100)}%` }}
                               />
                             </div>
-                            <span className={`text-sm font-bold ${getProgressColor(sub.annualProgress).replace('bg-', 'text-')}`}>
+                            <span className={`text-xs font-bold font-sans ${getProgressColor(sub.annualProgress).replace('bg-', 'text-')}`}>
                               {sub.annualProgress.toFixed(1)}%
                             </span>
-                            <span className="text-xs text-slate-500">
+                            <span className="text-[10px] text-slate-400 font-sans">
                               {sub.annualActual.toLocaleString()} / {sub.annualTarget.toLocaleString()}
                             </span>
                           </div>
-                        </td>
-                        <td className="px-6 py-3 text-center">
-                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(getStatus(sub.annualProgress))}`}>
-                            {getStatus(sub.annualProgress).replace('-', ' ').toUpperCase()}
-                          </span>
                         </td>
                       </tr>
                     ))}

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/browser';
 import { authFetch } from '../utils/authFetch';
+import { formatDate } from '../utils/dateUtils';
 
 interface PDFBarcodeScannerProps {
   onScan: (result: string) => void;
@@ -279,7 +280,7 @@ const PDFBarcodeScanner: React.FC<PDFBarcodeScannerProps> = ({ onScan, entry, on
               <div className="text-green-600">{retrievedData.status || 'N/A'}</div>
               
               <div className="font-medium text-green-700">Created:</div>
-              <div className="text-green-600">{new Date(retrievedData.createdAt).toLocaleDateString()}</div>
+              <div className="text-green-600">{formatDate(retrievedData.createdAt)}</div>
               
               {retrievedData.school && (
                 <>

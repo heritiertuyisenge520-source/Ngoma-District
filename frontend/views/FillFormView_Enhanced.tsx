@@ -5,6 +5,7 @@ import { MonitoringEntry } from '../types';
 import { API_ENDPOINTS, getSubmissionUrl } from '../config/api';
 import { getIndicatorUnit } from '../utils/progressUtils';
 import { authFetch, authPost } from '../utils/authFetch';
+import { formatDate } from '../utils/dateUtils';
 
 // Global indicator numbering (1-126)
 const indicatorNumbering = new Map<string, number>();
@@ -277,7 +278,7 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                     Last submission period: {systemStatus.activePeriod.description}
                   </p>
                   <p className="text-red-700 text-xs">
-                    Ended: {new Date(systemStatus.activePeriod.endDate).toLocaleDateString()}
+                    Ended: {formatDate(systemStatus.activePeriod.endDate)}
                   </p>
                 </div>
               )}
@@ -314,7 +315,7 @@ const FillFormView: React.FC<FillFormViewProps> = ({ entries, onAddEntry, onClea
                   Current submission period: {systemStatus.activePeriod.description}
                 </p>
                 <p className="text-emerald-700 text-xs">
-                  Closes: {new Date(systemStatus.activePeriod.endDate).toLocaleDateString()}
+                  Closes: {formatDate(systemStatus.activePeriod.endDate)}
                 </p>
               </div>
             )}

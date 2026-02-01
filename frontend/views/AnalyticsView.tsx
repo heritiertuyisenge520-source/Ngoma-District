@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { INDICATORS, PILLARS, QUARTERS, Indicator } from '../data';
 import { MonitoringEntry } from '../types';
 import { calculateQuarterProgress, calculateAnnualProgress, getIndicatorUnit, parseValue } from '../utils/progressUtils';
+import { formatDate } from '../utils/dateUtils';
 import jsPDF from 'jspdf';
 
 interface AnalyticsViewProps {
@@ -53,7 +54,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
           entry.month,
           entry.value,
           `"${(entry as any).submittedBy || 'Unknown'}"`,
-          new Date(entry.timestamp).toLocaleDateString(),
+          formatDate(entry.timestamp),
           `"${(entry.comments || '').replace(/"/g, '""')}"`
         ].join(',');
       })
@@ -381,7 +382,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
       pdf.setFont('helvetica', 'normal');
       pdf.text(`${selectedQuarter?.name || 'Quarter'} Performance Summary`, pageWidth / 2, 34, { align: 'center' });
       pdf.setFontSize(10);
-      pdf.text(`Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, pageWidth / 2, 44, { align: 'center' });
+      pdf.text(`Generated: ${formatDate(new Date())}`, pageWidth / 2, 44, { align: 'center' });
 
       let yPos = 60;
 
@@ -523,7 +524,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
       pdf.text(`${selectedIndicator?.name || 'Indicator'} - ${selectedQuarter?.name || 'Quarter'}`, pageWidth / 2, 30, { align: 'center' });
 
       pdf.setFontSize(9);
-      pdf.text(`Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, pageWidth / 2, 38, { align: 'center' });
+      pdf.text(`Generated: ${formatDate(new Date())}`, pageWidth / 2, 38, { align: 'center' });
 
       let yPos = 55;
 
@@ -655,35 +656,50 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
   const inputClasses = "w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-medium shadow-sm hover:border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 outline-none appearance-none cursor-pointer";
 
   return (
-    <div ref={reportRef} className="space-y-8 w-full">
+    <div ref={reportRef} className="space-y-8 w-full relative">
+      {/* Top Right Controls - Quarter Select and Download Button */}
+      <div className="fixed top-20 right-6 z-50 flex items-center gap-3">
+        {/* Quarter Select */}
+        <div className="relative">
+          <select
+            value={selectedQuarterId}
+            onChange={(e) => setSelectedQuarterId(e.target.value)}
+            className="h-11 px-4 pr-10 rounded-xl border-2 border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-lg hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 outline-none appearance-none cursor-pointer"
+          >
+            {QUARTERS.map(q => <option key={q.id} value={q.id}>{q.name}</option>)}
+          </select>
+          <svg className="w-5 h-5 absolute right-3 top-3 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+        
+        {/* PDF Download Icon Button */}
+        <button
+          onClick={handleDownloadDashboardPDF}
+          disabled={isGeneratingReport}
+          className="w-12 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-110 hover:shadow-xl group"
+          title={isGeneratingReport ? 'Generating PDF...' : 'Download Dashboard PDF'}
+        >
+          {isGeneratingReport ? (
+            <svg className="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          ) : (
+            <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+          )}
+        </button>
+      </div>
+
       {/* Part 1: Pillar Progress Overview (Pie Charts) */}
       <div className="bg-white rounded-3xl shadow-lg border border-slate-100 overflow-hidden">
-        <div className="p-8 border-b border-slate-100 bg-slate-50">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-800">Pillar Progress</h2>
-              <p className="text-sm text-slate-500">Quarter-based progress updates instantly from the dropdown.</p>
-            </div>
-            <div className="flex items-center gap-3 flex-wrap">
-              <button
-                onClick={handleDownloadDashboardPDF}
-                disabled={isGeneratingReport}
-                className="h-11 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-sm flex items-center gap-2 transition-colors disabled:opacity-50"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                <span>{isGeneratingReport ? 'Generating...' : 'Download PDF'}</span>
-              </button>
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Quarter</span>
-              <select
-                value={selectedQuarterId}
-                onChange={(e) => setSelectedQuarterId(e.target.value)}
-                className="h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 outline-none appearance-none cursor-pointer"
-              >
-                {QUARTERS.map(q => <option key={q.id} value={q.id}>{q.name}</option>)}
-              </select>
-            </div>
+        <div className="px-8 pt-6 pb-4 border-b border-slate-100 bg-slate-50">
+          <div>
+            <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-emerald-600 bg-clip-text text-transparent mb-1">
+              Pillar Progress
+            </h2>
+            <p className="text-xs text-slate-400 font-medium">Quarter-based progress updates instantly from the dropdown.</p>
           </div>
         </div>
 
@@ -695,7 +711,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
             return (
               <div
                 key={pillar.id}
-                className="bg-slate-50 rounded-3xl p-6 md:p-8 border border-slate-100 shadow-sm animate-in slide-in-from-left"
+                className="bg-slate-50 rounded-3xl p-6 md:p-8 border-2 border-slate-200 shadow-sm animate-in slide-in-from-left hover:border-blue-300 transition-colors duration-300"
                 style={{ animationDelay: `${index * 120}ms`, animationFillMode: 'both' }}
               >
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
@@ -793,28 +809,39 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
 
 
       {/* Filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 p-5 bg-white rounded-2xl border border-slate-100 shadow-sm">
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block">Quarter</label>
-          <select value={selectedQuarterId} onChange={(e) => setSelectedQuarterId(e.target.value)} className={inputClasses}>
-            {QUARTERS.map(q => <option key={q.id} value={q.id}>{q.name}</option>)}
-          </select>
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        {/* Quarter Filter Card */}
+        <div className="bg-white rounded-xl p-4 border-2 border-slate-200 shadow-sm hover:border-blue-300 transition-colors duration-300">
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block">Quarter</label>
+            <select value={selectedQuarterId} onChange={(e) => setSelectedQuarterId(e.target.value)} className={inputClasses}>
+              {QUARTERS.map(q => <option key={q.id} value={q.id}>{q.name}</option>)}
+            </select>
+          </div>
         </div>
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block">Pillar</label>
-          <select value={selectedPillarId} onChange={(e) => setSelectedPillarId(e.target.value)} className={inputClasses}>
-            {PILLARS.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
+        
+        {/* Pillar Filter Card */}
+        <div className="bg-white rounded-xl p-4 border-2 border-slate-200 shadow-sm hover:border-blue-300 transition-colors duration-300">
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block">Pillar</label>
+            <select value={selectedPillarId} onChange={(e) => setSelectedPillarId(e.target.value)} className={inputClasses}>
+              {PILLARS.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
         </div>
-        <div className="space-y-1.5 sm:col-span-2">
-
-          <select value={selectedIndicatorId} onChange={(e) => setSelectedIndicatorId(e.target.value)} className={inputClasses} disabled={availableIndicators.length === 0}>
-            {availableIndicators.length === 0 ? (
-              <option value="">-- No indicators available --</option>
-            ) : (
-              availableIndicators.map(i => <option key={i.id} value={i.id}>{indicatorNumbering.get(i.id)}. {i.name} {getIndicatorUnit(i as Indicator)}</option>)
-            )}
-          </select>
+        
+        {/* Indicator Filter Card */}
+        <div className="bg-white rounded-xl p-4 border-2 border-slate-200 shadow-sm hover:border-blue-300 transition-colors duration-300 sm:col-span-2">
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block">Indicator</label>
+            <select value={selectedIndicatorId} onChange={(e) => setSelectedIndicatorId(e.target.value)} className={inputClasses} disabled={availableIndicators.length === 0}>
+              {availableIndicators.length === 0 ? (
+                <option value="">-- No indicators available --</option>
+              ) : (
+                availableIndicators.map(i => <option key={i.id} value={i.id}>{indicatorNumbering.get(i.id)}. {i.name} {getIndicatorUnit(i as Indicator)}</option>)
+              )}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -1057,7 +1084,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ entries, userType }) => {
                 )}
                 <div className="text-right">
                   <p className="text-[10px] text-slate-400 uppercase">Date</p>
-                  <p className="text-sm text-slate-500">{new Date(latestSubmission.timestamp).toLocaleDateString()}</p>
+                  <p className="text-sm text-slate-500">{formatDate(latestSubmission.timestamp)}</p>
                 </div>
               </div>
             </div>

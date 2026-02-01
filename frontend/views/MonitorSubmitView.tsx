@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { API_ENDPOINTS, getSubmissionPeriodUrl } from '../config/api';
-import { authFetch, authPost, authDelete } from '../utils/authFetch';
+import { authFetch, authPost, authPatch, authDelete } from '../utils/authFetch';
+import { formatDate } from '../utils/dateUtils';
 
 interface SubmissionPeriod {
     _id: string;
@@ -42,7 +43,33 @@ const MonitorSubmitView: React.FC<MonitorSubmitViewProps> = ({ user }) => {
             const response = await authFetch(API_ENDPOINTS.SUBMISSION_PERIODS);
             if (response.ok) {
                 const data = await response.json();
-                setPeriods(data);
+                const now = new Date();
+                
+                // Filter out ended periods and delete them from database
+                const activePeriods: SubmissionPeriod[] = [];
+                const endedPeriods: SubmissionPeriod[] = [];
+                
+                data.forEach((period: SubmissionPeriod) => {
+                    const end = new Date(period.endDate);
+                    if (now > end) {
+                        endedPeriods.push(period);
+                    } else {
+                        activePeriods.push(period);
+                    }
+                });
+                
+                // Delete ended periods from database
+                if (endedPeriods.length > 0) {
+                    for (const period of endedPeriods) {
+                        try {
+                            await authDelete(getSubmissionPeriodUrl(period._id));
+                        } catch (error) {
+                            console.error(`Error deleting ended period ${period._id}:`, error);
+                        }
+                    }
+                }
+                
+                setPeriods(activePeriods);
             }
         } catch (error) {
             console.error('Error fetching submission periods:', error);
@@ -65,24 +92,37 @@ const MonitorSubmitView: React.FC<MonitorSubmitViewProps> = ({ user }) => {
         }
 
         try {
-            const url = editingPeriod
-                ? getSubmissionPeriodUrl(editingPeriod._id)
-                : API_ENDPOINTS.SUBMISSION_PERIOD;
-
-            const response = await authPost(url, {
-                ...formData,
-                createdBy: user.email,
-                createdByName: user.name
-            });
+            let response;
+            if (editingPeriod) {
+                // Use PATCH for updates
+                const url = getSubmissionPeriodUrl(editingPeriod._id);
+                response = await authPatch(url, {
+                    description: formData.description,
+                    startDate: formData.startDate,
+                    endDate: formData.endDate,
+                    isActive: editingPeriod.isActive
+                });
+            } else {
+                // Use POST for creates
+                response = await authPost(API_ENDPOINTS.SUBMISSION_PERIOD, {
+                    ...formData,
+                    createdBy: user.email,
+                    createdByName: user.name
+                });
+            }
 
             if (response.ok) {
                 setSuccessMessage(editingPeriod ? 'Submission period updated successfully!' : 'Submission period created successfully!');
                 fetchPeriods();
                 resetForm();
                 setTimeout(() => setSuccessMessage(''), 5000);
+            } else {
+                const errorData = await response.json().catch(() => ({}));
+                alert(errorData.message || 'Failed to save submission period');
             }
         } catch (error) {
             console.error('Error saving submission period:', error);
+            alert('An error occurred while saving the submission period');
         }
     };
 
@@ -151,25 +191,50 @@ const MonitorSubmitView: React.FC<MonitorSubmitViewProps> = ({ user }) => {
     };
 
     const activePeriod = periods.find(p => p.isActive && new Date(p.startDate) <= new Date() && new Date(p.endDate) >= new Date());
+    
+    // Check if there's any ongoing period (not ended)
+    const hasOngoingPeriod = periods.some(p => {
+        const now = new Date();
+        const end = new Date(p.endDate);
+        return p.isActive && now <= end;
+    });
+
+    const handleCreateNew = () => {
+        if (hasOngoingPeriod) {
+            const ongoingPeriod = periods.find(p => {
+                const now = new Date();
+                const end = new Date(p.endDate);
+                return p.isActive && now <= end;
+            });
+            if (ongoingPeriod) {
+                const status = getStatusInfo(ongoingPeriod);
+                alert(`You have an ongoing submission period:\n\n"${ongoingPeriod.description}"\nStatus: ${status.label}\n${status.message}\n\nPlease update or delete the existing period before creating a new one.`);
+                return;
+            }
+        }
+        setShowForm(true);
+    };
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900">Monitor Submissions</h1>
-                    <p className="mt-1 text-sm text-slate-600 font-medium">
+                <div className="transition-all duration-500">
+                    <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-emerald-600 bg-clip-text text-transparent mb-1 hover:scale-105 transition-transform duration-300">
+                        Monitor Submissions
+                    </h1>
+                    <p className="text-xs text-slate-400 font-normal leading-relaxed">
                         Control when users can submit their progress data. Set start and end dates for submission windows.
                     </p>
                 </div>
                 <button
-                    onClick={() => setShowForm(true)}
-                    className="px-6 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors flex items-center space-x-2 shadow-lg shadow-blue-600/20"
+                    onClick={handleCreateNew}
+                    className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm"
                 >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
-                    <span>Create New Period</span>
+                    <span>New Period</span>
                 </button>
             </header>
 
@@ -196,19 +261,21 @@ const MonitorSubmitView: React.FC<MonitorSubmitViewProps> = ({ user }) => {
 
             {/* Current Active Period Banner */}
             {activePeriod && (
-                <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
-                    <div className="relative z-10">
-                        <div className="flex items-center space-x-2 mb-2">
-                            <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
-                            <span className="text-emerald-100 text-sm font-semibold uppercase tracking-wider">Currently Active</span>
+                <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-xl p-4 text-white shadow-md relative overflow-hidden hover:shadow-lg transition-shadow duration-300">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+                    <div className="relative z-10 flex items-center justify-between">
+                        <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1.5">
+                                <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                                <span className="text-emerald-100 text-xs font-semibold uppercase tracking-wide">Active</span>
+                            </div>
+                            <h3 className="text-base font-bold mb-0.5">{activePeriod.description}</h3>
+                            <p className="text-emerald-100 text-xs">
+                                {formatDate(activePeriod.startDate)} - {formatDate(activePeriod.endDate)}
+                            </p>
                         </div>
-                        <h3 className="text-xl font-bold mb-1">{activePeriod.description}</h3>
-                        <p className="text-emerald-100">
-                            {new Date(activePeriod.startDate).toLocaleDateString()} - {new Date(activePeriod.endDate).toLocaleDateString()}
-                        </p>
-                        <div className="mt-4 bg-white/20 rounded-xl px-4 py-2 inline-block">
-                            <span className="font-bold">{getStatusInfo(activePeriod).message}</span>
+                        <div className="bg-white/20 rounded-lg px-3 py-1.5">
+                            <span className="text-xs font-bold">{getStatusInfo(activePeriod).message}</span>
                         </div>
                     </div>
                 </div>
@@ -216,63 +283,63 @@ const MonitorSubmitView: React.FC<MonitorSubmitViewProps> = ({ user }) => {
 
             {/* Create/Edit Form Modal */}
             {showForm && (
-                <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/40" onClick={() => resetForm()}>
-                    <div className="bg-white rounded-2xl p-8 shadow-2xl max-w-lg w-full mx-4 animate-in zoom-in duration-300" onClick={e => e.stopPropagation()}>
-                        <h2 className="text-xl font-bold text-slate-900 mb-6">
-                            {editingPeriod ? 'Edit Submission Period' : 'Create New Submission Period'}
+                <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/40 backdrop-blur-sm" onClick={() => resetForm()}>
+                    <div className="bg-white rounded-xl p-5 shadow-2xl max-w-md w-full mx-4 animate-in zoom-in duration-300" onClick={e => e.stopPropagation()}>
+                        <h2 className="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
+                            {editingPeriod ? 'Edit Period' : 'New Period'}
                         </h2>
-                        <form onSubmit={handleSubmit} className="space-y-4">
+                        <form onSubmit={handleSubmit} className="space-y-3">
                             <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">Description</label>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Description</label>
                                 <input
                                     type="text"
                                     value={formData.description}
                                     onChange={e => setFormData({ ...formData, description: e.target.value })}
                                     placeholder="e.g., Q1 2025-2026 Submission Window"
-                                    className="w-full p-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
+                                    className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 outline-none transition-all"
                                     required
                                 />
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">Start Date</label>
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">Start Date</label>
                                     <input
                                         type="date"
                                         value={formData.startDate}
                                         onChange={e => setFormData({ ...formData, startDate: e.target.value })}
-                                        className="w-full p-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
+                                        className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 outline-none transition-all"
                                         required
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">End Date</label>
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">End Date</label>
                                     <input
                                         type="date"
                                         value={formData.endDate}
                                         onChange={e => setFormData({ ...formData, endDate: e.target.value })}
-                                        className="w-full p-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
+                                        className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 outline-none transition-all"
                                         required
                                     />
                                 </div>
                             </div>
-                            <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
-                                <p className="text-sm text-amber-700">
-                                    <strong>Note:</strong> Creating a new submission period will deactivate all previous periods. Users will only be able to submit data during active submission windows.
+                            <div className="bg-amber-50 p-2.5 rounded-lg border border-amber-200">
+                                <p className="text-xs text-amber-700 leading-relaxed">
+                                    <strong>Note:</strong> New periods deactivate previous ones.
                                 </p>
                             </div>
-                            <div className="flex space-x-3 pt-4">
+                            <div className="flex gap-2 pt-2">
                                 <button
                                     type="button"
                                     onClick={resetForm}
-                                    className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors"
+                                    className="flex-1 px-3 py-2 bg-slate-100 text-slate-700 text-sm font-semibold rounded-lg hover:bg-slate-200 transition-colors"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-1 px-4 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
+                                    className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
                                 >
-                                    {editingPeriod ? 'Update Period' : 'Create Period'}
+                                    {editingPeriod ? 'Update' : 'Create'}
                                 </button>
                             </div>
                         </form>
@@ -297,47 +364,65 @@ const MonitorSubmitView: React.FC<MonitorSubmitViewProps> = ({ user }) => {
                     <p className="text-slate-500 text-sm mt-1">Create your first submission period to control when users can submit data.</p>
                 </div>
             ) : (
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div className="p-4 bg-slate-50 border-b border-slate-200">
-                        <h3 className="font-bold text-slate-900">All Submission Periods</h3>
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="px-4 py-2.5 bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200">
+                        <h3 className="text-sm font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">All Submission Periods</h3>
                     </div>
                     <div className="divide-y divide-slate-100">
                         {periods.map(period => {
                             const status = getStatusInfo(period);
                             return (
-                                <div key={period._id} className="p-5 hover:bg-slate-50 transition-colors">
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex-1">
-                                            <div className="flex items-center space-x-3 mb-2">
-                                                <h4 className="font-bold text-slate-900">{period.description}</h4>
-                                                <span className={`px-2 py-1 text-xs font-bold bg-${status.color}-100 text-${status.color}-700 rounded-lg`}>
+                                <div 
+                                    key={period._id} 
+                                    className="px-4 py-3 hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50 transition-all duration-300 group cursor-pointer"
+                                >
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                                <h4 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
+                                                    {period.description}
+                                                </h4>
+                                                <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-md whitespace-nowrap ${
+                                                    status.color === 'emerald' ? 'bg-emerald-100 text-emerald-700' :
+                                                    status.color === 'amber' ? 'bg-amber-100 text-amber-700' :
+                                                    status.color === 'red' ? 'bg-red-100 text-red-700' :
+                                                    'bg-slate-100 text-slate-700'
+                                                }`}>
                                                     {status.label}
                                                 </span>
                                             </div>
-                                            <p className="text-sm text-slate-500">
-                                                {new Date(period.startDate).toLocaleDateString()} - {new Date(period.endDate).toLocaleDateString()}
+                                            <div className="flex items-center gap-3 text-xs text-slate-500 mb-0.5">
+                                                <span className="font-medium">
+                                                    {formatDate(period.startDate)} - {formatDate(period.endDate)}
+                                                </span>
+                                            </div>
+                                            <p className="text-[10px] text-slate-400 mb-1">
+                                                by {period.createdByName} • {formatDate(period.createdAt)}
                                             </p>
-                                            <p className="text-xs text-slate-400 mt-1">
-                                                Created by {period.createdByName} on {new Date(period.createdAt).toLocaleDateString()}
-                                            </p>
-                                            <p className="text-sm text-slate-600 mt-2 font-medium">{status.message}</p>
+                                            <p className="text-xs text-slate-600 font-medium">{status.message}</p>
                                         </div>
-                                        <div className="flex items-center space-x-2">
+                                        <div className="flex items-center gap-1 flex-shrink-0">
                                             <button
-                                                onClick={() => handleEdit(period)}
-                                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleEdit(period);
+                                                }}
+                                                className="p-1.5 text-blue-600 hover:bg-blue-100 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95"
                                                 title="Edit Period"
                                             >
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                                 </svg>
                                             </button>
                                             <button
-                                                onClick={() => handleDelete(period._id)}
-                                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDelete(period._id);
+                                                }}
+                                                className="p-1.5 text-red-600 hover:bg-red-100 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95"
                                                 title="Delete Period"
                                             >
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                                 </svg>
                                             </button>

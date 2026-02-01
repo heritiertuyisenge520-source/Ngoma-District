@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { API_ENDPOINTS, getSubmissionPeriodUrl } from '../config/api';
 import { authFetch, authPost, authDelete } from '../utils/authFetch';
+import { formatDate } from '../utils/dateUtils';
 
 interface SubmissionPeriod {
     _id: string;
@@ -277,7 +278,7 @@ const MonitorSubmitView: React.FC<MonitorSubmitViewProps> = ({ user }) => {
                                         {systemStatus.activePeriod.description}
                                     </p>
                                     <p className="text-white/80 text-sm">
-                                        {new Date(systemStatus.activePeriod.startDate).toLocaleDateString()} - {new Date(systemStatus.activePeriod.endDate).toLocaleDateString()}
+                                        {formatDate(systemStatus.activePeriod.startDate)} - {formatDate(systemStatus.activePeriod.endDate)}
                                     </p>
                                     <p className="text-white/70 text-xs mt-1">
                                         {getStatusInfo(systemStatus.activePeriod).message}
@@ -435,10 +436,10 @@ const MonitorSubmitView: React.FC<MonitorSubmitViewProps> = ({ user }) => {
                                                 </span>
                                             </div>
                                             <p className="text-sm text-slate-500">
-                                                {new Date(period.startDate).toLocaleDateString()} - {new Date(period.endDate).toLocaleDateString()}
+                                                {formatDate(period.startDate)} - {formatDate(period.endDate)}
                                             </p>
                                             <p className="text-xs text-slate-400 mt-1">
-                                                Created by {period.createdByName} on {new Date(period.createdAt).toLocaleDateString()}
+                                                Created by {period.createdByName} on {formatDate(period.createdAt)}
                                             </p>
                                             <p className="text-sm text-slate-600 mt-2 font-medium">{status.message}</p>
                                         </div>

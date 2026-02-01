@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { API_ENDPOINTS, getRejectUserUrl } from '../config/api';
 import { authFetch } from '../utils/authFetch';
+import { formatDate } from '../utils/dateUtils';
 
 interface PendingUser {
     _id: string;
@@ -183,7 +184,7 @@ const ApproveUsersView: React.FC<ApproveUsersViewProps> = ({ adminEmail }) => {
                                                     {user.role}
                                                 </span>
                                                 <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 text-xs font-medium">
-                                                    Registered: {new Date(user.createdAt).toLocaleDateString()}
+                                                    Registered: {formatDate(user.createdAt)}
                                                 </span>
                                             </div>
                                         </div>

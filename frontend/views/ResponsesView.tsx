@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { PILLARS, INDICATORS } from '../data';
 import { MonitoringEntry } from '../types';
+import { formatDate } from '../utils/dateUtils';
 
 interface UserInfo {
   email: string;
@@ -161,7 +162,7 @@ const ResponsesView: React.FC<ResponsesViewProps> = ({ entries, user, onEdit, on
       // Submission Details
       pdf.setFontSize(12);
       pdf.setTextColor(0, 0, 0);
-      pdf.text(`Date: ${new Date().toLocaleDateString()}`, 20, 50);
+      pdf.text(`Date: ${formatDate(new Date())}`, 20, 50);
       pdf.text(`Submitted By: ${entry.submittedBy || 'Unknown'}`, 20, 60);
       pdf.text(`Period: ${entry.month} (${entry.quarterId?.toUpperCase()})`, 20, 70);
       
@@ -597,14 +598,14 @@ const ResponsesView: React.FC<ResponsesViewProps> = ({ entries, user, onEdit, on
                     <div className="mb-3 bg-purple-50 rounded-lg p-2 border border-purple-200">
                       <div className="text-xs text-purple-700">
                         <div className="font-medium">Modified by: {(entry as any).modifiedBy || 'Unknown'}</div>
-                        <div>Date: {(entry as any).modifiedAt ? new Date((entry as any).modifiedAt).toLocaleDateString() : 'Unknown'}</div>
+                        <div>Date: {(entry as any).modifiedAt ? formatDate((entry as any).modifiedAt) : 'Unknown'}</div>
                       </div>
                     </div>
                   )}
                   
                   {/* Meta Info */}
                   <div className="flex items-center justify-between text-xs text-slate-500 mb-3">
-                    <span>{new Date(entry.timestamp || '').toLocaleDateString()}</span>
+                    <span>{formatDate(entry.timestamp || '')}</span>
                     {entry.submittedBy ? (
                       <button
                         onClick={() => onViewUserProfile?.(entry.submittedBy!)}

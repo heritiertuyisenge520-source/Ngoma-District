@@ -112,7 +112,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, user, onLogout, setActive
               </svg>
             </div>
             <div>
-              <h1 className="text-lg font-bold text-white">Imihigo</h1>
+              <h1 className="text-lg font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400 bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient">
+                Imihigo
+              </h1>
               <p className="text-[10px] text-slate-400 uppercase tracking-widest">Monitoring System</p>
             </div>
           </div>

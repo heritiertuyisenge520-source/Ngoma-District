@@ -44,5 +44,11 @@ export const authPut = (url: string, body: any) => authFetch(url, {
   body: JSON.stringify(body)
 });
 
+// Helper for PATCH requests
+export const authPatch = (url: string, body: any) => authFetch(url, {
+  method: 'PATCH',
+  body: JSON.stringify(body)
+});
+
 // Helper for DELETE requests
 export const authDelete = (url: string) => authFetch(url, { method: 'DELETE' });

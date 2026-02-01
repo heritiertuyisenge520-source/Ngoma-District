@@ -15,8 +15,6 @@ interface ProfileViewProps {
 
 const ProfileView: React.FC<ProfileViewProps> = ({ user, viewUserEmail }) => {
   const [profileUser, setProfileUser] = useState(user);
-  const [userSubmissions, setUserSubmissions] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
 
   // Fetch profile user data if viewing another user's profile
@@ -47,156 +45,144 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, viewUserEmail }) => {
     fetchProfileUser();
   }, [viewUserEmail, user]);
 
-  useEffect(() => {
-    // Fetch user's submission history
-    const fetchUserSubmissions = async () => {
-      setLoading(true);
-      try {
-        const response = await authGet('/api/submissions');
-        if (response.ok) {
-          const submissions = await response.json();
-          // Filter submissions by profile user email
-          const targetEmail = viewUserEmail || user.email;
-          const userSubs = submissions.filter((sub: any) => sub.submittedBy === targetEmail);
-          setUserSubmissions(userSubs);
-        }
-      } catch (error) {
-        console.error('Error fetching user submissions:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const getUserTypeColor = (userType?: string) => {
+    switch (userType?.toLowerCase()) {
+      case 'super_admin':
+        return 'bg-gradient-to-r from-purple-500 to-purple-600';
+      case 'head':
+        return 'bg-gradient-to-r from-blue-500 to-blue-600';
+      case 'employee':
+        return 'bg-gradient-to-r from-emerald-500 to-emerald-600';
+      default:
+        return 'bg-gradient-to-r from-slate-500 to-slate-600';
+    }
+  };
 
-    fetchUserSubmissions();
-  }, [viewUserEmail, user.email]);
+  const getUserTypeBadge = (userType?: string) => {
+    const color = getUserTypeColor(userType);
+    return (
+      <span className={`${color} text-white text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wider shadow-sm`}>
+        {userType?.replace('_', ' ') || 'Unknown'}
+      </span>
+    );
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Header */}
-      <header className="bg-white rounded-2xl p-6 shadow-lg border border-slate-200">
-        <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 mb-2">
-          {viewUserEmail && viewUserEmail !== user.email ? 'User Profile' : 'My Profile'}
-        </h1>
-        <p className="text-slate-600">
-          {viewUserEmail && viewUserEmail !== user.email 
-            ? `View ${profileUser.name}'s profile information and submission history`
-            : 'View your profile information and submission history'}
-        </p>
-      </header>
-
-      {/* Profile Information */}
-      <div className="bg-white rounded-2xl p-6 shadow-lg border border-slate-200">
-        <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center">
-          <svg className="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-          </svg>
-          Personal Information
-        </h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Profile Header Card */}
+      <div className="relative bg-gradient-to-br from-blue-600 via-purple-600 to-emerald-600 rounded-2xl shadow-xl overflow-hidden">
+        <div className="absolute inset-0 bg-black/10"></div>
+        <div className="relative p-8">
           {profileLoading ? (
-            <div className="col-span-2 text-center py-8">
-              <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-              <p className="text-slate-500">Loading profile...</p>
+            <div className="text-center py-12">
+              <div className="animate-spin w-12 h-12 border-4 border-white/30 border-t-white rounded-full mx-auto mb-4"></div>
+              <p className="text-white/90 font-medium">Loading profile...</p>
             </div>
           ) : (
             <>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Full Name</label>
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <p className="text-slate-900 font-medium">{profileUser.name || 'Not specified'}</p>
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Email Address</label>
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <p className="text-slate-900 font-medium">{profileUser.email}</p>
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">User Type</label>
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <p className="text-slate-900 font-medium capitalize">{profileUser.userType || 'Not specified'}</p>
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Role</label>
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <p className="text-slate-900 font-medium capitalize">{profileUser.role || 'Not specified'}</p>
-                </div>
-              </div>
-              
-              {profileUser.unit && (
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-bold text-slate-700 mb-2">Unit/Department</label>
-                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                    <p className="text-slate-900 font-medium">{profileUser.unit}</p>
+              <div className="flex items-start justify-between mb-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border-4 border-white/30 shadow-lg">
+                    <span className="text-3xl font-bold text-white">
+                      {profileUser.name?.charAt(0)?.toUpperCase() || 'U'}
+                    </span>
+                  </div>
+                  <div>
+                    <h1 className="text-3xl font-bold text-white mb-2">
+                      {profileUser.name || 'Unknown User'}
+                    </h1>
+                    <p className="text-white/80 text-sm">
+                      {viewUserEmail && viewUserEmail !== user.email ? 'User Profile' : 'My Profile'}
+                    </p>
                   </div>
                 </div>
-              )}
+                {getUserTypeBadge(profileUser.userType)}
+              </div>
             </>
           )}
         </div>
       </div>
 
-      {/* Submission History */}
-      <div className="bg-white rounded-2xl p-6 shadow-lg border border-slate-200">
-        <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center">
-          <svg className="w-6 h-6 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          {viewUserEmail && viewUserEmail !== user.email ? 'Submission History' : 'My Submission History'}
-        </h2>
-        
-        {loading ? (
-          <div className="text-center py-8">
-            <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-slate-500">Loading your submissions...</p>
+      {/* Information Cards Grid */}
+      {!profileLoading && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Email Card */}
+          <div className="bg-white rounded-xl shadow-md border border-slate-200 p-6 hover:shadow-lg transition-all duration-300 group">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300 shadow-sm">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Email Address</p>
+                <p className="text-base font-semibold text-slate-900 truncate">{profileUser.email}</p>
+              </div>
+            </div>
           </div>
-        ) : userSubmissions.length === 0 ? (
-          <div className="text-center py-8">
-            <svg className="w-16 h-16 text-slate-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <p className="text-slate-500 font-medium">No submissions yet</p>
-            <p className="text-slate-400 text-sm mt-1">Start submitting data to see your history here</p>
+
+          {/* Role Card */}
+          <div className="bg-white rounded-xl shadow-md border border-slate-200 p-6 hover:shadow-lg transition-all duration-300 group">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300 shadow-sm">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Role</p>
+                <p className="text-base font-semibold text-slate-900 capitalize">{profileUser.role || 'Not specified'}</p>
+              </div>
+            </div>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-slate-100 border-b-2 border-slate-200">
-                  <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Indicator</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Period</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Value</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Date</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {userSubmissions.map((submission, index) => (
-                  <tr key={index} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 text-sm text-slate-900">
-                      {submission.indicatorName || 'Unknown Indicator'}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-slate-600">
-                      {submission.month} ({submission.quarterId?.toUpperCase() || 'N/A'})
-                    </td>
-                    <td className="px-4 py-3 text-sm font-medium text-slate-900">
-                      {submission.value?.toLocaleString() || '0'}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-slate-600">
-                      {new Date(submission.timestamp).toLocaleDateString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+
+          {/* User Type Card */}
+          <div className="bg-white rounded-xl shadow-md border border-slate-200 p-6 hover:shadow-lg transition-all duration-300 group">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300 shadow-sm">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">User Type</p>
+                <p className="text-base font-semibold text-slate-900 capitalize">{profileUser.userType?.replace('_', ' ') || 'Not specified'}</p>
+              </div>
+            </div>
           </div>
-        )}
-      </div>
+
+          {/* Unit/Department Card */}
+          {profileUser.unit ? (
+            <div className="bg-white rounded-xl shadow-md border border-slate-200 p-6 hover:shadow-lg transition-all duration-300 group">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300 shadow-sm">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Unit/Department</p>
+                  <p className="text-base font-semibold text-slate-900">{profileUser.unit}</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl shadow-md border border-slate-200 p-6 hover:shadow-lg transition-all duration-300 group opacity-50">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-slate-400 to-slate-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Unit/Department</p>
+                  <p className="text-base font-semibold text-slate-400">Not assigned</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

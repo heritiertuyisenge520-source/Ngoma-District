@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { authGet, authPut, authDelete } from '../utils/authFetch';
 import { PILLARS, INDICATORS } from '../data';
- import { MonitoringEntry } from '../types';
+import { MonitoringEntry } from '../types';
+import { formatDate } from '../utils/dateUtils';
 
 interface UserSubmittedViewProps {
   user: {
@@ -257,11 +258,7 @@ const UserSubmittedView: React.FC<UserSubmittedViewProps> = ({ user }) => {
               Object.entries(
                 filteredEntries.reduce((groups, entry) => {
                   const date = new Date(entry.timestamp || Date.now());
-                  const dateKey = date.toLocaleDateString('en-US', { 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
-                  });
+                  const dateKey = formatDate(date);
                   
                   if (!groups[dateKey]) {
                     groups[dateKey] = [];
