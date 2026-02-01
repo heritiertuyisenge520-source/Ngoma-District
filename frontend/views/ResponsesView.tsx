@@ -15,26 +15,30 @@ interface ResponsesViewProps {
   user: UserInfo;
   onEdit: (entry: MonitoringEntry) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onViewUserProfile?: (email: string) => void;
 }
 
-const ResponsesView: React.FC<ResponsesViewProps> = ({ entries, user, onEdit, onDelete }) => {
+const ResponsesView: React.FC<ResponsesViewProps> = ({ entries, user, onEdit, onDelete, onViewUserProfile }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPillar, setSelectedPillar] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('');
+  const [selectedQuarter, setSelectedQuarter] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Record<string, { value: string; comments: string; subValues?: Record<string, string> }>>({});
 
   const filteredEntries = entries.filter(entry => {
-    const pillar = PILLARS.find(p => p.id === entry.pillarId);
+    // More flexible pillar lookup - check both ID and name
+    const pillar = PILLARS.find(p => p.id === entry.pillarId || p.name === entry.pillarId);
     const indicator = pillar?.outputs.flatMap(o => o.indicators).find(i => i.id === entry.indicatorId);
-    const searchStr = `${pillar?.name} ${indicator?.name} ${entry.month} ${entry.comments}`.toLowerCase();
+    const searchStr = `${pillar?.name || entry.pillarName || ''} ${indicator?.name || entry.indicatorName || ''} ${entry.month} ${entry.comments || ''}`.toLowerCase();
     
     // Apply filters
     const matchesSearch = searchStr.includes(searchTerm.toLowerCase());
     const matchesPillar = !selectedPillar || entry.pillarName === selectedPillar || pillar?.name === selectedPillar;
     const matchesMonth = !selectedMonth || entry.month === selectedMonth;
+    const matchesQuarter = !selectedQuarter || entry.quarterId?.toLowerCase() === selectedQuarter.toLowerCase();
     
-    return matchesSearch && matchesPillar && matchesMonth;
+    return matchesSearch && matchesPillar && matchesMonth && matchesQuarter;
   });
 
   // Get unique pillars from entries
@@ -42,6 +46,9 @@ const ResponsesView: React.FC<ResponsesViewProps> = ({ entries, user, onEdit, on
   
   // Get unique months from entries
   const availableMonths = Array.from(new Set(entries.map(entry => entry.month))).sort();
+  
+  // Get unique quarters from entries
+  const availableQuarters = Array.from(new Set(entries.map(entry => entry.quarterId).filter(Boolean))).sort();
 
   const handleEditClick = (entry: MonitoringEntry) => {
     setEditingId((entry as any)._id);
@@ -249,8 +256,10 @@ const ResponsesView: React.FC<ResponsesViewProps> = ({ entries, user, onEdit, on
     <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
       <header className="flex flex-col space-y-6">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900">Submitted Responses</h1>
-          <p className="mt-2 text-slate-600 font-medium">Review, edit, and manage all submitted entries.</p>
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-emerald-600 bg-clip-text text-transparent">
+            Submitted Responses
+          </h1>
+          <p className="mt-1.5 text-sm text-slate-500 font-normal">Review, edit, and manage all submitted entries.</p>
         </div>
         
         {/* Filters Section */}
@@ -303,13 +312,31 @@ const ResponsesView: React.FC<ResponsesViewProps> = ({ entries, user, onEdit, on
             </svg>
           </div>
           
+          {/* Quarter Filter */}
+          <div className="relative">
+            <select
+              value={selectedQuarter}
+              onChange={(e) => setSelectedQuarter(e.target.value)}
+              className="h-12 px-4 pr-10 rounded-xl border-2 border-slate-300 bg-white text-slate-900 font-medium focus:border-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none shadow-sm appearance-none cursor-pointer"
+            >
+              <option value="">All Quarters</option>
+              {availableQuarters.map(quarter => (
+                <option key={quarter} value={quarter}>{quarter.toUpperCase()}</option>
+              ))}
+            </select>
+            <svg className="w-5 h-5 absolute right-3 top-3.5 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+          
           {/* Clear Filters Button */}
-          {(selectedPillar || selectedMonth || searchTerm) && (
+          {(selectedPillar || selectedMonth || selectedQuarter || searchTerm) && (
             <button
               onClick={() => {
                 setSearchTerm('');
                 setSelectedPillar('');
                 setSelectedMonth('');
+                setSelectedQuarter('');
               }}
               className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-colors font-medium text-sm"
             >
@@ -319,61 +346,31 @@ const ResponsesView: React.FC<ResponsesViewProps> = ({ entries, user, onEdit, on
         </div>
       </header>
 
-      {/* Stats Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-blue-100 text-sm font-medium">Total Submissions</p>
-              <p className="text-3xl font-bold mt-1">{filteredEntries.length}</p>
-            </div>
-            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
+      {/* Stats Summary - Single Compact Card */}
+      <div className="bg-gradient-to-br from-blue-50 via-purple-50 to-emerald-50 rounded-xl shadow-md border border-blue-200/50 p-4 transition-all duration-500 ease-out hover:shadow-lg">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Total Submissions */}
+          <div className="group hover:bg-blue-50 rounded-lg p-2 transition-all duration-300 hover:shadow-sm">
+            <p className="text-xs text-slate-500 font-medium">Total</p>
+            <p className="text-xl font-bold text-slate-900 tabular-nums group-hover:text-blue-600 transition-colors duration-300">{filteredEntries.length}</p>
           </div>
-        </div>
-        
-        <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-2xl p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-purple-100 text-sm font-medium">Modified</p>
-              <p className="text-3xl font-bold mt-1">{filteredEntries.filter(e => (e as any).hasBeenModified).length}</p>
-            </div>
-            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-            </div>
+          
+          {/* Modified */}
+          <div className="group hover:bg-purple-50 rounded-lg p-2 transition-all duration-300 hover:shadow-sm">
+            <p className="text-xs text-slate-500 font-medium">Modified</p>
+            <p className="text-xl font-bold text-slate-900 tabular-nums group-hover:text-purple-600 transition-colors duration-300">{filteredEntries.filter(e => (e as any).hasBeenModified).length}</p>
           </div>
-        </div>
-        
-        <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-2xl p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-emerald-100 text-sm font-medium">This Month</p>
-              <p className="text-3xl font-bold mt-1">{filteredEntries.filter(e => e.month === new Date().toLocaleString('default', { month: 'long' })).length}</p>
-            </div>
-            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
+          
+          {/* This Month */}
+          <div className="group hover:bg-emerald-50 rounded-lg p-2 transition-all duration-300 hover:shadow-sm">
+            <p className="text-xs text-slate-500 font-medium">This Month</p>
+            <p className="text-xl font-bold text-slate-900 tabular-nums group-hover:text-emerald-600 transition-colors duration-300">{filteredEntries.filter(e => e.month === new Date().toLocaleString('default', { month: 'long' })).length}</p>
           </div>
-        </div>
-        
-        <div className="bg-gradient-to-r from-amber-500 to-amber-600 rounded-2xl p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-amber-100 text-sm font-medium">Unique Indicators</p>
-              <p className="text-3xl font-bold mt-1">{new Set(filteredEntries.map(e => e.indicatorId)).size}</p>
-            </div>
-            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </div>
+          
+          {/* Unique Indicators */}
+          <div className="group hover:bg-amber-50 rounded-lg p-2 transition-all duration-300 hover:shadow-sm">
+            <p className="text-xs text-slate-500 font-medium">Indicators</p>
+            <p className="text-xl font-bold text-slate-900 tabular-nums group-hover:text-amber-600 transition-colors duration-300">{new Set(filteredEntries.map(e => e.indicatorId)).size}</p>
           </div>
         </div>
       </div>
@@ -383,8 +380,17 @@ const ResponsesView: React.FC<ResponsesViewProps> = ({ entries, user, onEdit, on
         {filteredEntries.length > 0 ? (
           filteredEntries.map((entry, idx) => {
             const isModified = (entry as any).hasBeenModified && (entry as any).modificationStatus === 'approved_modified';
-            const pillar = PILLARS.find(p => p.id === entry.pillarId);
-            const indicator = pillar?.outputs.flatMap(o => o.indicators).find(i => i.id === entry.indicatorId);
+            // More flexible pillar lookup - check both ID and name
+            const pillar = PILLARS.find(p => p.id === entry.pillarId || p.name === entry.pillarId);
+            // Try to find indicator in the found pillar, or search all pillars if not found
+            let indicator = pillar?.outputs.flatMap(o => o.indicators).find(i => i.id === entry.indicatorId);
+            if (!indicator) {
+              // Search all pillars for the indicator
+              for (const p of PILLARS) {
+                indicator = p.outputs.flatMap(o => o.indicators).find(i => i.id === entry.indicatorId);
+                if (indicator) break;
+              }
+            }
             
             return (
               <div 
@@ -411,11 +417,11 @@ const ResponsesView: React.FC<ResponsesViewProps> = ({ entries, user, onEdit, on
                     <div className="flex items-center space-x-2 mb-1">
                       <div className="w-2 h-2 rounded-full bg-blue-500" />
                       <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                        {pillar?.name || entry.pillarName}
+                        {pillar?.name || entry.pillarName || 'Unknown Pillar'}
                       </span>
                     </div>
                     <h3 className="text-sm font-bold text-slate-900 line-clamp-2">
-                      {indicator?.name || entry.indicatorName}
+                      {indicator?.name || entry.indicatorName || 'Unknown Indicator'}
                     </h3>
                   </div>
                   
@@ -599,7 +605,17 @@ const ResponsesView: React.FC<ResponsesViewProps> = ({ entries, user, onEdit, on
                   {/* Meta Info */}
                   <div className="flex items-center justify-between text-xs text-slate-500 mb-3">
                     <span>{new Date(entry.timestamp || '').toLocaleDateString()}</span>
-                    <span>{entry.submittedBy?.split('@')[0] || 'Unknown'}</span>
+                    {entry.submittedBy ? (
+                      <button
+                        onClick={() => onViewUserProfile?.(entry.submittedBy!)}
+                        className="text-blue-600 hover:text-blue-800 hover:underline font-medium transition-colors"
+                        title={`View ${entry.submittedBy}'s profile`}
+                      >
+                        {entry.submittedBy.split('@')[0]}
+                      </button>
+                    ) : (
+                      <span>Unknown</span>
+                    )}
                   </div>
                   
                   {/* Action Buttons */}

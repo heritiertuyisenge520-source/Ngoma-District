@@ -398,6 +398,33 @@ router.post('/verify-user', async (req, res) => {
     }
 });
 
+// Get user profile by email
+router.get('/user-profile/:email', authenticate, async (req, res) => {
+    try {
+        const { email } = req.params;
+        const user = await UserModel.findOne({ email, isActive: true }).select('-password');
+        
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.json({
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            userType: user.userType,
+            unit: user.unit,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            lastLogin: user.lastLogin,
+            isApproved: user.isApproved
+        });
+    } catch (error) {
+        console.error('Error fetching user profile:', error);
+        res.status(500).json({ message: 'Error fetching user profile' });
+    }
+});
+
 // ============ DATA CHANGE REQUEST ROUTES ============
 
 // Create a data change request (employee wants to edit submission)

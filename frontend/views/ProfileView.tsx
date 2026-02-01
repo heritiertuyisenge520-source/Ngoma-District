@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { authGet } from '../utils/authFetch';
+import { getUserProfileUrl } from '../config/api';
 
 interface ProfileViewProps {
   user: {
@@ -9,21 +10,54 @@ interface ProfileViewProps {
     userType: string;
     unit?: string;
   };
+  viewUserEmail?: string; // Optional: email of user to view (if different from current user)
 }
 
-const ProfileView: React.FC<ProfileViewProps> = ({ user }) => {
+const ProfileView: React.FC<ProfileViewProps> = ({ user, viewUserEmail }) => {
+  const [profileUser, setProfileUser] = useState(user);
   const [userSubmissions, setUserSubmissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(false);
+
+  // Fetch profile user data if viewing another user's profile
+  useEffect(() => {
+    const fetchProfileUser = async () => {
+      if (viewUserEmail && viewUserEmail !== user.email) {
+        setProfileLoading(true);
+        try {
+          const response = await authGet(getUserProfileUrl(viewUserEmail));
+          if (response.ok) {
+            const profileData = await response.json();
+            setProfileUser(profileData);
+          } else {
+            console.error('Error fetching user profile');
+            setProfileUser(user); // Fallback to current user
+          }
+        } catch (error) {
+          console.error('Error fetching user profile:', error);
+          setProfileUser(user); // Fallback to current user
+        } finally {
+          setProfileLoading(false);
+        }
+      } else {
+        setProfileUser(user);
+      }
+    };
+
+    fetchProfileUser();
+  }, [viewUserEmail, user]);
 
   useEffect(() => {
     // Fetch user's submission history
     const fetchUserSubmissions = async () => {
+      setLoading(true);
       try {
         const response = await authGet('/api/submissions');
         if (response.ok) {
           const submissions = await response.json();
-          // Filter submissions by current user
-          const userSubs = submissions.filter((sub: any) => sub.submittedBy === user.email);
+          // Filter submissions by profile user email
+          const targetEmail = viewUserEmail || user.email;
+          const userSubs = submissions.filter((sub: any) => sub.submittedBy === targetEmail);
           setUserSubmissions(userSubs);
         }
       } catch (error) {
@@ -34,14 +68,20 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user }) => {
     };
 
     fetchUserSubmissions();
-  }, [user.email]);
+  }, [viewUserEmail, user.email]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Header */}
       <header className="bg-white rounded-2xl p-6 shadow-lg border border-slate-200">
-        <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 mb-2">My Profile</h1>
-        <p className="text-slate-600">View your profile information and submission history</p>
+        <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 mb-2">
+          {viewUserEmail && viewUserEmail !== user.email ? 'User Profile' : 'My Profile'}
+        </h1>
+        <p className="text-slate-600">
+          {viewUserEmail && viewUserEmail !== user.email 
+            ? `View ${profileUser.name}'s profile information and submission history`
+            : 'View your profile information and submission history'}
+        </p>
       </header>
 
       {/* Profile Information */}
@@ -54,41 +94,50 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user }) => {
         </h2>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">Full Name</label>
-            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-              <p className="text-slate-900 font-medium">{user.name || 'Not specified'}</p>
+          {profileLoading ? (
+            <div className="col-span-2 text-center py-8">
+              <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+              <p className="text-slate-500">Loading profile...</p>
             </div>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">Email Address</label>
-            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-              <p className="text-slate-900 font-medium">{user.email}</p>
-            </div>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">User Type</label>
-            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-              <p className="text-slate-900 font-medium capitalize">{user.userType || 'Not specified'}</p>
-            </div>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">Role</label>
-            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-              <p className="text-slate-900 font-medium capitalize">{user.role || 'Not specified'}</p>
-            </div>
-          </div>
-          
-          {user.unit && (
-            <div className="md:col-span-2">
-              <label className="block text-sm font-bold text-slate-700 mb-2">Unit/Department</label>
-              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                <p className="text-slate-900 font-medium">{user.unit}</p>
+          ) : (
+            <>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Full Name</label>
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                  <p className="text-slate-900 font-medium">{profileUser.name || 'Not specified'}</p>
+                </div>
               </div>
-            </div>
+              
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Email Address</label>
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                  <p className="text-slate-900 font-medium">{profileUser.email}</p>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">User Type</label>
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                  <p className="text-slate-900 font-medium capitalize">{profileUser.userType || 'Not specified'}</p>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Role</label>
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                  <p className="text-slate-900 font-medium capitalize">{profileUser.role || 'Not specified'}</p>
+                </div>
+              </div>
+              
+              {profileUser.unit && (
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Unit/Department</label>
+                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                    <p className="text-slate-900 font-medium">{profileUser.unit}</p>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -99,7 +148,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user }) => {
           <svg className="w-6 h-6 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          My Submission History
+          {viewUserEmail && viewUserEmail !== user.email ? 'Submission History' : 'My Submission History'}
         </h2>
         
         {loading ? (

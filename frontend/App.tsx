@@ -20,6 +20,7 @@ import ManageUsersView from './views/ManageUsersView';
 import IndicatorProgressView from './views/IndicatorProgressView';
 import IndicatorReports from './components/IndicatorReports';
 import PillarProgressView from './views/PillarProgressView';
+import ProfileView from './views/ProfileView';
 import ErrorBoundary from './components/ErrorBoundary';
 import { MonitoringEntry } from './types';
 import { API_ENDPOINTS, getAssignedIndicatorsUrl } from './config/api';
@@ -62,6 +63,7 @@ const App: React.FC = () => {
   });
   const [assignedIndicators, setAssignedIndicators] = useState<IndicatorAssignment[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [viewUserEmail, setViewUserEmail] = useState<string | undefined>(undefined);
 
   const fetchEntries = useCallback(async () => {
     try {
@@ -121,6 +123,17 @@ const App: React.FC = () => {
   const handleViewChange = (view: string) => {
     setActiveView(view);
     localStorage.setItem(STORAGE_KEYS.ACTIVE_VIEW, view);
+    setIsSidebarOpen(false);
+    // Clear viewUserEmail when switching away from profile
+    if (view !== 'profile') {
+      setViewUserEmail(undefined);
+    }
+  };
+
+  const handleViewUserProfile = (email: string) => {
+    setViewUserEmail(email);
+    setActiveView('profile');
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_VIEW, 'profile');
     setIsSidebarOpen(false);
   };
 
@@ -376,7 +389,7 @@ const App: React.FC = () => {
                 />
               </ErrorBoundary>
             )}
-            {activeView === 'responses' && <ResponsesView entries={entries} user={user} onEdit={handleEditEntry} onDelete={handleDeleteEntry} />}
+            {activeView === 'responses' && <ResponsesView entries={entries} user={user} onEdit={handleEditEntry} onDelete={handleDeleteEntry} onViewUserProfile={handleViewUserProfile} />}
             {activeView === 'submitted-data' && <SubmittedDataView entries={entries} user={user} onDelete={handleDeleteEntry} onEdit={handleEditEntry} onDownload={handleDownloadEntry} />}
             {activeView === 'indicator-progress' && <IndicatorProgressView user={user} />}
             {activeView === 'targets' && <TargetView />}
@@ -390,6 +403,7 @@ const App: React.FC = () => {
             {activeView === 'data-change-requests' && <DataChangeRequestsView user={user} />}
             {activeView === 'monitor-submit' && <MonitorSubmitView user={user} />}
             {activeView === 'manage-users' && <ManageUsersView adminEmail={user.email} />}
+            {activeView === 'profile' && <ProfileView user={user} viewUserEmail={viewUserEmail} />}
           </div>
         </main>
       </div>

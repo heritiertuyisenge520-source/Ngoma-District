@@ -25,6 +25,7 @@ export const API_ENDPOINTS = {
     ALL_USERS: `${API_BASE_URL}/api/auth/all-users`,
     UPDATE_USER: `${API_BASE_URL}/api/auth/update-user`,
     DELETE_USER: `${API_BASE_URL}/api/auth/delete-user`,
+    USER_PROFILE: `${API_BASE_URL}/api/auth/user-profile`,
 
     // Indicators endpoints
     INDICATORS: `${API_BASE_URL}/api/auth/indicators`,
@@ -91,3 +92,4 @@ export const getDataDeleteRequestsUrl = (unit: string) => `${API_ENDPOINTS.DATA_
 export const getApproveDeleteRequestUrl = (requestId: string) => `${API_ENDPOINTS.APPROVE_DELETE_REQUEST}/${requestId}`;
 export const getRejectDeleteRequestUrl = (requestId: string) => `${API_ENDPOINTS.REJECT_DELETE_REQUEST}/${requestId}`;
 export const getMyDeleteRequestsUrl = (email: string) => `${API_ENDPOINTS.MY_DELETE_REQUESTS}/${email}`;
+export const getUserProfileUrl = (email: string) => `${API_ENDPOINTS.USER_PROFILE}/${encodeURIComponent(email)}`;
